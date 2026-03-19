@@ -1,0 +1,55 @@
+{% load i18n %}
+
+{% if app_list %}
+  <div class="row g-3 admin-app-list">
+    {% for app in app_list %}
+      <div class="col-12 col-lg-6">
+        <div class="card shadow-sm h-100 admin-card">
+          <div class="card-header bg-white border-0 d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 text-uppercase text-muted">{% blocktranslate with name=app.name %}{{ name }}{% endblocktranslate %}</h6>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ app.app_url }}">
+              {% translate "View app" %}
+            </a>
+          </div>
+          <div class="card-body">
+            <div class="list-group list-group-flush">
+              {% for model in app.models %}
+                <div class="list-group-item d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div>
+                    {% if model.admin_url %}
+                      <a class="fw-semibold text-decoration-none" href="{{ model.admin_url }}"{% if model.admin_url in request.path|urlencode %} aria-current="page"{% endif %}>
+                        {{ model.name }}
+                      </a>
+                    {% else %}
+                      <span class="fw-semibold">{{ model.name }}</span>
+                    {% endif %}
+                  </div>
+                  <div class="d-flex gap-2 flex-wrap">
+                    {% if model.add_url %}
+                      <a class="btn btn-sm btn-outline-primary" href="{{ model.add_url }}">
+                        {% translate "Add" %}
+                      </a>
+                    {% endif %}
+                    {% if model.admin_url and show_changelinks %}
+                      {% if model.view_only %}
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ model.admin_url }}">
+                          {% translate "View" %}
+                        </a>
+                      {% else %}
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ model.admin_url }}">
+                          {% translate "Change" %}
+                        </a>
+                      {% endif %}
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p>{% translate 'You don’t have permission to view or edit anything.' %}</p>
+{% endif %}

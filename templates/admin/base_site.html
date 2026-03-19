@@ -1,0 +1,16 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<a class="brand-link" href="{% url 'admin:index' %}">
+  <span class="brand-mark"><i class="bi bi-grid-3x3-gap"></i></span>
+  <span class="brand-text">{{ site_header|default:_('Django administration') }}</span>
+</a>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

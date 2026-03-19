@@ -1,0 +1,26 @@
+from django.contrib import admin
+from apps.faculty.models import Cohort, InstitutionCourse, TrainingProgram
+
+
+@admin.register(Cohort)
+class CohortAdmin(admin.ModelAdmin):
+    list_display = ("name", "cohort_type", "department", "created_by", "is_active")
+    list_filter = ("cohort_type", "is_active", "department")
+    search_fields = ("name", "created_by__email")
+    ordering = ("-created_at",)
+
+
+@admin.register(InstitutionCourse)
+class InstitutionCourseAdmin(admin.ModelAdmin):
+    list_display = ("name", "category", "created_by", "is_published_to_profile")
+    list_filter = ("category", "is_published_to_profile")
+    search_fields = ("name", "created_by__email")
+    ordering = ("-created_at",)
+
+
+@admin.register(TrainingProgram)
+class TrainingProgramAdmin(admin.ModelAdmin):
+    list_display = ("title", "department", "start_date", "end_date", "is_active")
+    list_filter = ("department", "is_active")
+    search_fields = ("title", "department__name")
+    ordering = ("-start_date",)
