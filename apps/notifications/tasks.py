@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 def send_otp_sms(self, user_id: str, otp_code: str):
     """
     Send OTP via SMS. Retries up to 3 times on failure.
-    In development, we just log the OTP.
+    In development, we avoid logging the OTP.
     """
     try:
         from apps.accounts.models import User
@@ -17,9 +17,7 @@ def send_otp_sms(self, user_id: str, otp_code: str):
         # In production, call Twilio / MSG91 API here:
         # sms_client.send(to=user.phone, body=f'Your ERP OTP: {otp_code}. Valid for 10 minutes.')
         
-        message = f'Your ERP OTP: {otp_code}. Valid for 10 minutes.'
-        logger.info(f"SMS to {user.phone}: {message}")
-        print(f"DEBUG: SMS to {user.phone}: {message}") # Visible in celery logs
+        logger.info(f"SMS send requested for {user.phone}.")
         
         return True
     except Exception as exc:

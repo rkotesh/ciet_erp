@@ -118,6 +118,27 @@ class HODDashboardView(RoleRequiredMixin, View):
                 covered=Sum('covered_topics')
             )
         )
+        syllabus_totals = SyllabusCoverage.objects.filter(subject__in=dept_subjects).aggregate(
+            total=Sum('total_topics'),
+            covered=Sum('covered_topics'),
+        )
+        syllabus_total = float(syllabus_totals.get('total') or 0)
+        syllabus_covered = float(syllabus_totals.get('covered') or 0)
+        syllabus_pct = round((syllabus_covered / syllabus_total) * 100, 1) if syllabus_total else 0
+
+        # ── Principal-forwarded summary (graph) ──
+        total_students = StudentProfile.objects.filter(department=dept, is_deleted=False).count()
+        assigned_count = MentorAssignment.objects.filter(
+            academic_year=current_year, student__department=dept
+        ).count()
+        unassigned_count = max(total_students - assigned_count, 0)
+        avg_cgpa = (
+            StudentProfile.objects
+            .filter(department=dept, is_deleted=False)
+            .aggregate(avg=Avg('cgpa'))['avg'] or 0
+        )
+        principal_labels = ['Avg CGPA', 'Mentor Assigned', 'Mentor Unassigned', 'Syllabus %']
+        principal_values = [round(float(avg_cgpa), 2), assigned_count, unassigned_count, syllabus_pct]
 
         return render(request, 'faculty/hod_dashboard.html', {
             'dept':               dept,
@@ -136,6 +157,8 @@ class HODDashboardView(RoleRequiredMixin, View):
             'subjects':           dept_subjects,
             'perf_labels':        json.dumps(perf_labels),
             'perf_values':        json.dumps(perf_values),
+            'principal_labels':   json.dumps(principal_labels),
+            'principal_values':   json.dumps(principal_values),
         })
 
     def post(self, request):

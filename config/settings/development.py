@@ -25,5 +25,5 @@ DATABASES = {
     }
 }
 # Email Settings for Dev (can still be overridden by .env)
-EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='support@college-erp.local')

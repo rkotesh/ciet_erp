@@ -200,7 +200,8 @@ class StudentProfileEditView(LoginRequiredMixin, View):
         if personal_email != profile.personal_email:
             profile.personal_email_verified = False
         if personal_phone != profile.personal_phone:
-            profile.personal_phone_verified = False
+            # SMS verification disabled; mark as verified when updated
+            profile.personal_phone_verified = True
         profile.personal_email = personal_email
         profile.personal_phone = personal_phone
 
@@ -558,7 +559,9 @@ class StudentContactOtpView(LoginRequiredMixin, View):
         profile = get_object_or_404(StudentProfile, user=request.user)
         target = request.POST.get('target')
         action = request.POST.get('otp_action')
-        if target not in ['email', 'phone']:
+        if target == 'phone':
+            return JsonResponse({'ok': False, 'error': 'Phone verification is disabled'}, status=400)
+        if target not in ['email']:
             return JsonResponse({'ok': False, 'error': 'Invalid target'}, status=400)
 
         purpose = f'student_{target}_verify'
@@ -574,11 +577,7 @@ class StudentContactOtpView(LoginRequiredMixin, View):
                     profile.personal_email = destination
                     profile.personal_email_verified = False
                     profile.save(update_fields=['personal_email', 'personal_email_verified', 'updated_at'])
-            else:
-                if destination != profile.personal_phone:
-                    profile.personal_phone = destination
-                    profile.personal_phone_verified = False
-                    profile.save(update_fields=['personal_phone', 'personal_phone_verified', 'updated_at'])
+            # Phone verification disabled
 
             code = f"{random.randint(100000, 999999)}"
             OTPRecord.objects.create(
@@ -592,16 +591,6 @@ class StudentContactOtpView(LoginRequiredMixin, View):
                 ok, info = send_otp_email(request.user, code, purpose, destination_email=destination)
                 if not ok:
                     return JsonResponse({'ok': False, 'error': f'Email OTP send failed: {info}'}, status=500)
-                if settings.EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend':
-                    return JsonResponse({
-                        'ok': True,
-                        'message': f'OTP generated for email. Current backend is console, check runserver terminal output.'
-                    })
-            else:
-                from apps.accounts.otp_services import send_otp_sms_to_phone
-                ok, info = send_otp_sms_to_phone(destination, code, purpose, user_email=request.user.email)
-                if not ok:
-                    return JsonResponse({'ok': False, 'error': f'SMS OTP send failed: {info}'}, status=500)
             return JsonResponse({'ok': True, 'message': f'OTP sent to {target}'})
 
         if action == 'verify':
@@ -620,8 +609,6 @@ class StudentContactOtpView(LoginRequiredMixin, View):
 
             if target == 'email':
                 profile.personal_email_verified = True
-            else:
-                profile.personal_phone_verified = True
             profile.save(update_fields=['personal_email_verified', 'personal_phone_verified', 'updated_at'])
             return JsonResponse({'ok': True, 'message': f'{target.capitalize()} verified'})
 

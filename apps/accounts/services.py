@@ -2,11 +2,10 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 from apps.accounts.models import OTPRecord, User
-from apps.notifications.tasks import send_otp_sms
 
 
 def generate_and_send_otp(user: User, purpose: str) -> None:
-    """Generate OTP and dispatch async SMS."""
+    """Generate OTP (SMS delivery disabled)."""
     otp_code = f"{random.randint(100000, 999999)}"
     OTPRecord.objects.create(
         user=user,
@@ -14,8 +13,7 @@ def generate_and_send_otp(user: User, purpose: str) -> None:
         purpose=purpose,
         expires_at=timezone.now() + timedelta(minutes=10)
     )
-    # Dispatch Celery task
-    send_otp_sms.delay(str(user.id), otp_code)
+    # SMS delivery intentionally disabled
 
 
 def verify_otp(user: User, otp_code: str, purpose: str) -> bool:

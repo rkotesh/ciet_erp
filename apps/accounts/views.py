@@ -135,7 +135,7 @@ class LoginView(View):
             elif user.role == 'Student' or role == 'Parent':
                 error_msg = 'Incorrect password. For students, password is your Register Number.'
             elif user.role in ['Faculty', 'HOD', 'Mentor']:
-                error_msg = f'Incorrect password. Default faculty password is {settings.FACULTY_DEFAULT_PASSWORD} (or use the password provided by admin).'
+                error_msg = 'Incorrect password. Please use the password provided by admin.'
             else:
                 error_msg = 'Incorrect password. Please use the password provided by admin.'
             if remaining <= 2 and remaining > 0:

@@ -221,7 +221,6 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
 # Default credential policies (override in .env for production)
-FACULTY_DEFAULT_PASSWORD = env('FACULTY_DEFAULT_PASSWORD', default='Faculty00@')
 EXAMCELL_LOGIN_EMAIL = env('EXAMCELL_LOGIN_EMAIL', default='examcell@chalapathiengg.ac.in')
 EXAMCELL_LOGIN_PASSWORD = env('EXAMCELL_LOGIN_PASSWORD', default='Examcell00@')
 
@@ -243,21 +242,10 @@ EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
 
-# Realtime OTP integrations (optional; configure in .env for production)
-TWILIO_ACCOUNT_SID = env('TWILIO_ACCOUNT_SID', default='')
-TWILIO_AUTH_TOKEN = env('TWILIO_AUTH_TOKEN', default='')
-TWILIO_FROM_NUMBER = env('TWILIO_FROM_NUMBER', default='')
-
-SMS_API_URL = env('SMS_API_URL', default='')
-SMS_API_TOKEN = env('SMS_API_TOKEN', default='')
-SMS_API_PHONE_FIELD = env('SMS_API_PHONE_FIELD', default='phone')
-SMS_API_MESSAGE_FIELD = env('SMS_API_MESSAGE_FIELD', default='message')
-
-
 # DRF Settings
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_AUTHENTICATION_CLASSES': (
+    'DEFAULT_AUTHENTICATION_CLASSES': ( 
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ),

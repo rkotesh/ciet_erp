@@ -114,10 +114,9 @@ def send_otp_sms_to_phone(to_phone, otp, purpose, user_email=''):
         logger.info(info2)
         return True, info2
 
-    # Development fallback
-    logger.info(f"SMS fallback (no provider): OTP for {to_phone} is {otp}. Twilio: {info}. Generic: {info2}")
-    print(f"DEBUG: OTP SMS for {to_phone} is {otp}")
-    return False, f"No SMS provider configured. OTP printed in server log for {to_phone}"
+    # Development fallback (no OTP logged to console)
+    logger.info(f"SMS fallback (no provider) for {to_phone}. Twilio: {info}. Generic: {info2}")
+    return False, f"No SMS provider configured for {to_phone}"
 
 def create_and_send_otp(user, purpose):
     # Expire old unused OTPs
@@ -135,7 +134,7 @@ def create_and_send_otp(user, purpose):
     
     # Realtime multi-channel delivery
     send_otp_email(user, otp, purpose)
-    send_otp_sms(user, otp, purpose)
+    # SMS delivery intentionally disabled (no SMS verification required)
     return True
 
 def verify_otp(user, otp_code, purpose):
