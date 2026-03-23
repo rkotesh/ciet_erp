@@ -15,7 +15,7 @@
         <p class="text-muted smaller mb-0">Department: {{ dept.name }}</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <button class="btn btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#mentorAssignModal">
+        <button class="btn btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#directMentorAssignModal">
             <i class="bi bi-person-plus me-2"></i> Assign Mentor
         </button>
         <button class="btn btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#trainingModal">
@@ -31,52 +31,65 @@
     <div class="col-lg-8">
         <div class="card-linkedin p-4 mb-4">
             <h5 class="fw-bold mb-3">Mentor Assignments ({{ current_year }})</h5>
-            <div class="row g-3 align-items-end mb-3">
-                <div class="col-md-5">
-                    <label class="smaller fw-bold mb-1">Mentor</label>
-                    <select class="form-select smaller" form="assignMentorForm" name="mentor_id" required>
-                        <option value="">Select Mentor</option>
-                        {% for mentor in mentors %}
-                        <option value="{{ mentor.id }}">{{ mentor.full_name|default:mentor.email }}</option>
-                        {% endfor %}
-                    </select>
+            <p class="text-muted smaller mb-0">Section-based mentor assignment has been removed. Use direct assignments below.</p>
+        </div>
+
+        <div class="card-linkedin p-4 mb-4">
+            <h5 class="fw-bold mb-3">Direct Mentor Assignments (Selected Students)</h5>
+            <form method="post" class="mb-3">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="assign_mentor_students">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="smaller fw-bold mb-1">Mentor</label>
+                        <select class="form-select smaller" name="mentor_id" required>
+                            <option value="">Select Mentor</option>
+                            {% for mentor in mentors %}
+                            <option value="{{ mentor.id }}">{{ mentor.full_name|default:mentor.email }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="smaller fw-bold mb-1">Students</label>
+                        <div class="border rounded p-2" style="max-height: 160px; overflow-y: auto;">
+                            {% for student in dept_students %}
+                            <div class="form-check smaller mb-1">
+                                <input class="form-check-input" type="checkbox" name="student_ids" value="{{ student.id }}" id="dm{{ student.id }}">
+                                <label class="form-check-label" for="dm{{ student.id }}">
+                                    {{ student.user.full_name }} ({{ student.roll_no }}){% if student.section %} · {{ student.section.name }}{% endif %}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-li btn-li-primary">Assign Selected Students</button>
+                    </div>
                 </div>
-                <div class="col-md-5">
-                    <label class="smaller fw-bold mb-1">Student (Unassigned)</label>
-                    <select class="form-select smaller" form="assignMentorForm" name="student_id" required>
-                        <option value="">Select Student</option>
-                        {% for student in unassigned_students %}
-                        <option value="{{ student.id }}">{{ student.user.full_name }} ({{ student.roll_no }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <form method="post" id="assignMentorForm">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="assign_mentor">
-                        <button class="btn btn-li btn-li-primary w-100" type="submit">Assign</button>
-                    </form>
-                </div>
-            </div>
+            </form>
             <div class="table-responsive">
                 <table class="table table-sm align-middle smaller">
                     <thead>
                         <tr>
-                            <th>Student</th>
                             <th>Mentor</th>
+                            <th>Students</th>
                             <th>Academic Year</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for a in assignments %}
+                        {% for a in direct_assignments %}
                         <tr>
-                            <td>{{ a.student.user.full_name }} ({{ a.student.roll_no }})</td>
                             <td>{{ a.mentor.full_name|default:a.mentor.email }}</td>
+                            <td>
+                                {% for s in a.students.all %}
+                                {{ s.roll_no }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </td>
                             <td>{{ a.academic_year }}</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="3" class="text-muted">No mentor assignments yet.</td>
+                            <td colspan="3" class="text-muted">No direct mentor assignments yet.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -243,8 +256,8 @@
 
 {% block modals %}
 {% if not no_dept %}
-<!-- MODAL: Assign Mentor -->
-<div class="modal fade" id="mentorAssignModal" tabindex="-1">
+<!-- MODAL: Assign Mentor (Direct Students) -->
+<div class="modal fade" id="directMentorAssignModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content border-0 rounded-4">
             <div class="modal-header">
@@ -253,7 +266,7 @@
             </div>
             <form method="post">
                 {% csrf_token %}
-                <input type="hidden" name="action" value="assign_mentor">
+                <input type="hidden" name="action" value="assign_mentor_students">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="smaller fw-bold mb-1">Mentor</label>
@@ -265,13 +278,17 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">Student (Unassigned)</label>
-                        <select name="student_id" class="form-select smaller" required>
-                            <option value="">Select Student</option>
-                            {% for student in unassigned_students %}
-                            <option value="{{ student.id }}">{{ student.user.full_name }} ({{ student.roll_no }})</option>
+                        <label class="smaller fw-bold mb-1">Students</label>
+                        <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                            {% for student in dept_students %}
+                            <div class="form-check smaller mb-1">
+                                <input class="form-check-input" type="checkbox" name="student_ids" value="{{ student.id }}" id="md{{ student.id }}">
+                                <label class="form-check-label" for="md{{ student.id }}">
+                                    {{ student.user.full_name }} ({{ student.roll_no }}){% if student.section %} · {{ student.section.name }}{% endif %}
+                                </label>
+                            </div>
                             {% endfor %}
-                        </select>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-top-0">

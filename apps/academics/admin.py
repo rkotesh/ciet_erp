@@ -1,5 +1,5 @@
 from django.contrib import admin
-from apps.academics.models import Department, Subject, Marks
+from apps.academics.models import Department, Section, Subject, Marks
 
 
 @admin.register(Department)
@@ -7,6 +7,14 @@ class DepartmentAdmin(admin.ModelAdmin):
     list_display = ('code', 'name', 'hod')
     search_fields = ('name', 'code')
     ordering = ('code',)
+
+
+@admin.register(Section)
+class SectionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'department')
+    list_filter = ('department',)
+    search_fields = ('name', 'department__name', 'department__code')
+    ordering = ('department', 'name')
 
 
 @admin.register(Subject)

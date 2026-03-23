@@ -28,8 +28,15 @@ class RoleAuthenticationForm(AuthenticationForm):
             if role in dept_roles:
                 if not department:
                     raise forms.ValidationError("Please select your department.")
-                if user.department != department:
-                    raise forms.ValidationError(f"Incorrect department for this user.")
+                if role in ['Faculty', 'Mentor']:
+                    if not user.departments.filter(id=department.id).exists():
+                        raise forms.ValidationError("Incorrect department for this user.")
+                elif role == 'HOD':
+                    if department.hod_id != user.id:
+                        raise forms.ValidationError("Incorrect department for this user.")
+                elif role == 'Student':
+                    if not hasattr(user, 'student_profile') or user.student_profile.department_id != department.id:
+                        raise forms.ValidationError("Incorrect department for this user.")
         
         return cleaned_data
 

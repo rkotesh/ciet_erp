@@ -9,6 +9,7 @@ class StudentProfile(BaseModel):
     roll_no    = models.CharField(max_length=20, unique=True, db_index=True)
     batch      = models.CharField(max_length=10)           # e.g., "2022-2026"
     department = models.ForeignKey('academics.Department', on_delete=models.PROTECT, related_name='students')
+    section    = models.ForeignKey('academics.Section', on_delete=models.SET_NULL, null=True, blank=True, related_name='students')
     cgpa       = models.DecimalField(max_digits=4, decimal_places=2, default=0.0)
     resume     = models.FileField(upload_to='resumes/', blank=True)
     photo      = models.ImageField(upload_to='student_photos/', blank=True, null=True)

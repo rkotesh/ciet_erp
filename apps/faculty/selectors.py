@@ -8,10 +8,15 @@ def get_subjects_by_faculty(faculty_id: str) -> QuerySet:
     return Subject.objects.filter(faculty_id=faculty_id).select_related('department')
 
 
-def get_pending_certifications_for_dept(department_id: str) -> QuerySet:
-    """Return certifications pending verification for a department."""
+def get_pending_certifications_for_dept(department_id) -> QuerySet:
+    """Return certifications pending verification for one or more departments."""
+    if isinstance(department_id, (list, tuple, set)):
+        dept_filter = {'student__department_id__in': list(department_id)}
+    else:
+        dept_filter = {'student__department_id': department_id}
     return (
         Certification.objects
-        .filter(student__department_id=department_id, verified=False)
+        .filter(**dept_filter)
+        .filter(is_verified=False)
         .select_related('student__user')
     )

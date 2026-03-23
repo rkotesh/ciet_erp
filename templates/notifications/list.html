@@ -56,8 +56,10 @@
                     <ul class="list-unstyled">
                         <li><i class="bi bi-check-circle-fill text-success"></i> Global Announcements</li>
                         <li><i class="bi bi-check-circle-fill text-success"></i> Role: {{ request.user.role }}</li>
-                        {% if request.user.department %}
-                        <li><i class="bi bi-check-circle-fill text-success"></i> Dept: {{ request.user.department.name }}</li>
+                        {% if user_departments %}
+                        <li><i class="bi bi-check-circle-fill text-success"></i> Depts:
+                            {% for d in user_departments %}{{ d.code }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                        </li>
                         {% endif %}
                     </ul>
                 </div>

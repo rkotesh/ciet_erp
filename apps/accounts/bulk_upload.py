@@ -12,11 +12,40 @@ from django.http import HttpResponse
 from django.db import transaction
 from django.utils import timezone
 from apps.accounts.models import User
-from apps.academics.models import Department
+from apps.academics.models import Department, Section
 from apps.students.models import StudentProfile, SemesterResult
 
 
 VALID_ROLES = [r[0] for r in User.Role.choices]
+
+
+def _get_department_by_code_or_name(dept_code: str):
+    if not dept_code:
+        return None
+    try:
+        return Department.objects.get(code__iexact=dept_code)
+    except Department.DoesNotExist:
+        try:
+            return Department.objects.get(name__iexact=dept_code)
+        except Department.DoesNotExist:
+            return None
+
+
+def _resolve_departments_for_staff(role: str, dept_code: str):
+    """
+    For Faculty/Mentor: if assigned to AI or AIML, auto-assign both.
+    For other roles: single department if provided.
+    """
+    dept = _get_department_by_code_or_name(dept_code)
+    if not dept:
+        return []
+
+    if role in ['Faculty', 'Mentor']:
+        if dept.code.upper() in ['AI', 'AIML'] or dept.name.upper() in ['AI', 'AIML']:
+            ai = Department.objects.filter(code__iexact='AI').first() or Department.objects.filter(name__iexact='AI').first()
+            aiml = Department.objects.filter(code__iexact='AIML').first() or Department.objects.filter(name__iexact='AIML').first()
+            return [d for d in [ai, aiml] if d]
+    return [dept]
 
 
 @csrf_exempt
@@ -114,6 +143,10 @@ def _import_users(rows):
             result['errors'].append(f"Row {i}: Missing email, role, or password.")
             result['skipped'] += 1
             continue
+        if role in ['Faculty', 'Mentor', 'HOD'] and not dept_code:
+            result['errors'].append(f"Row {i}: Department required for role '{role}'.")
+            result['skipped'] += 1
+            continue
 
         if role not in VALID_ROLES:
             result['errors'].append(f"Row {i}: Invalid role '{role}'. Valid: {', '.join(VALID_ROLES)}")
@@ -125,30 +158,29 @@ def _import_users(rows):
             result['skipped'] += 1
             continue
 
-        department = None
-        if dept_code:
-            try:
-                department = Department.objects.get(code__iexact=dept_code)
-            except Department.DoesNotExist:
-                try:
-                    department = Department.objects.get(name__iexact=dept_code)
-                except Department.DoesNotExist:
-                    result['errors'].append(f"Row {i}: Department '{dept_code}' not found — skipped.")
-                    result['skipped'] += 1
-                    continue
+        departments = _resolve_departments_for_staff(role, dept_code) if dept_code else []
+        if dept_code and not departments:
+            result['errors'].append(f"Row {i}: Department '{dept_code}' not found — skipped.")
+            result['skipped'] += 1
+            continue
 
         try:
-            User.objects.create_user(
+            user = User.objects.create_user(
                 email=email,
                 password=password,
                 full_name=full_name,
                 role=role,
                 phone=phone,
-                department=department,
                 is_active=True,
                 is_staff=(role == 'Director'),
                 is_superuser=(role == 'Director'),
             )
+            if departments:
+                user.departments.set(departments)
+            if role == 'HOD' and departments:
+                # Enforce single department for HOD
+                departments[0].hod = user
+                departments[0].save(update_fields=['hod', 'updated_at'])
             result['created'] += 1
         except Exception as e:
             result['errors'].append(f"Row {i}: {str(e)}")
@@ -266,7 +298,7 @@ def _import_semester_result_pdf(request, pdf_file):
 def _import_students(rows):
     """
     Import students — creates User + StudentProfile in one go.
-    Expected CSV columns: full_name, email, phone, roll_no, batch, department_code, password
+    Expected CSV columns: full_name, email, phone, roll_no, batch, department_code, section, password
     """
     result = {'created': 0, 'skipped': 0, 'errors': []}
     required = {'full_name', 'email', 'roll_no', 'batch', 'department_code', 'password'}
@@ -284,6 +316,7 @@ def _import_students(rows):
         roll_no = row.get('roll_no', '').strip().upper()
         batch = row.get('batch', '').strip()
         dept_code = row.get('department_code', '').strip().upper()
+        section_name = row.get('section', '').strip().upper()
         password = row.get('password', '').strip()
 
         if not email or not roll_no or not batch or not dept_code or not password:
@@ -301,13 +334,16 @@ def _import_students(rows):
             result['skipped'] += 1
             continue
 
-        try:
-            department = Department.objects.get(code__iexact=dept_code)
-        except Department.DoesNotExist:
-            try:
-                department = Department.objects.get(name__iexact=dept_code)
-            except Department.DoesNotExist:
-                result['errors'].append(f"Row {i}: Department '{dept_code}' not found — skipped.")
+        department = _get_department_by_code_or_name(dept_code)
+        if not department:
+            result['errors'].append(f"Row {i}: Department '{dept_code}' not found — skipped.")
+            result['skipped'] += 1
+            continue
+        section = None
+        if section_name:
+            section = Section.objects.filter(department=department, name__iexact=section_name).first()
+            if not section:
+                result['errors'].append(f"Row {i}: Section '{section_name}' not found for {department.code} — skipped.")
                 result['skipped'] += 1
                 continue
 
@@ -319,14 +355,15 @@ def _import_students(rows):
                     full_name=full_name,
                     role='Student',
                     phone=phone,
-                    department=department,
                     is_active=True,
                 )
+                user.departments.set([department])
                 StudentProfile.objects.create(
                     user=user,
                     roll_no=roll_no,
                     batch=batch,
                     department=department,
+                    section=section,
                 )
             result['created'] += 1
         except Exception as e:
@@ -346,10 +383,10 @@ def download_sample_csv(request):
     writer = csv.writer(response)
 
     if upload_type == 'students':
-        writer.writerow(['full_name', 'email', 'phone', 'roll_no', 'batch', 'department_code', 'password'])
-        writer.writerow(['Ravi Kumar', 'ravi@ciet.edu.in', '9876543210', '22B01A0501', '2022-2026', 'CSE', 'Welcome@123'])
-        writer.writerow(['Priya Sharma', 'priya@ciet.edu.in', '9876543211', '22B01A0502', '2022-2026', 'CSE', 'Welcome@123'])
-        writer.writerow(['Kiran Reddy', 'kiran@ciet.edu.in', '9876543212', '22B01A0301', '2022-2026', 'ECE', 'Welcome@123'])
+        writer.writerow(['full_name', 'email', 'phone', 'roll_no', 'batch', 'department_code', 'section', 'password'])
+        writer.writerow(['Ravi Kumar', 'ravi@ciet.edu.in', '9876543210', '22B01A0501', '2022-2026', 'CSE', 'A', 'Welcome@123'])
+        writer.writerow(['Priya Sharma', 'priya@ciet.edu.in', '9876543211', '22B01A0502', '2022-2026', 'CSE', 'B', 'Welcome@123'])
+        writer.writerow(['Kiran Reddy', 'kiran@ciet.edu.in', '9876543212', '22B01A0301', '2022-2026', 'ECE', 'A', 'Welcome@123'])
     elif upload_type == 'semester_results':
         writer.writerow(['roll_no', 'semester', 'exam_name', 'subject_code', 'subject_name', 'score', 'max_score', 'grade'])
         writer.writerow(['22B01A0501', '4', 'Semester Exam', 'CS401', 'Compiler Design', '78', '100', 'A'])

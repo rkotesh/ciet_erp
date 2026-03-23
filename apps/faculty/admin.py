@@ -1,5 +1,5 @@
 from django.contrib import admin
-from apps.faculty.models import Cohort, InstitutionCourse, TrainingProgram
+from apps.faculty.models import Cohort, InstitutionCourse, TrainingProgram, StudentMentorAssignment
 
 
 @admin.register(Cohort)
@@ -24,3 +24,10 @@ class TrainingProgramAdmin(admin.ModelAdmin):
     list_filter = ("department", "is_active")
     search_fields = ("title", "department__name")
     ordering = ("-start_date",)
+
+
+@admin.register(StudentMentorAssignment)
+class StudentMentorAssignmentAdmin(admin.ModelAdmin):
+    list_display = ("mentor", "academic_year", "assigned_by")
+    list_filter = ("academic_year",)
+    search_fields = ("mentor__email",)

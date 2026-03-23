@@ -79,6 +79,18 @@ class MentorAssignment(BaseModel):
         return f"Mentor: {self.mentor.email} -> Student: {self.student.roll_no}"
 
 
+class StudentMentorAssignment(BaseModel):
+    mentor        = models.ForeignKey('accounts.User', on_delete=models.CASCADE,
+                        related_name='student_mentor_assignments', limit_choices_to={'role': 'Mentor'})
+    students      = models.ManyToManyField('students.StudentProfile', related_name='direct_mentor_assignments', blank=True)
+    academic_year = models.CharField(max_length=20)
+    assigned_by   = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+                        related_name='student_mentor_assignments_made')
+
+    def __str__(self):
+        return f"Mentor: {self.mentor.email} ({self.academic_year})"
+
+
 # ── SYLLABUS TRACKING ──────────────────────────────────────────────────────────
 class SyllabusCoverage(BaseModel):
     """Tracks unit-wise syllabus completion per subject per faculty."""

@@ -23,7 +23,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentProfile
         fields = [
-            'id', 'user', 'roll_no', 'batch', 'department', 
+            'id', 'user', 'roll_no', 'batch', 'department', 'section',
             'cgpa', 'resume', 'linkedin_url', 'github_url', 'leetcode_url',
             'hackerrank_url', 'codechef_url', 'codeforces_url',
             'personal_email', 'personal_phone',

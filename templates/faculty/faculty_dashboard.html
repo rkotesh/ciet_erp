@@ -115,6 +115,7 @@
                         data-cohort-id="{{ cohort.id }}"
                         data-cohort-name="{{ cohort.name }}"
                         data-cohort-type="{{ cohort.cohort_type }}"
+                        data-cohort-department="{{ cohort.department.id }}"
                         data-cohort-students="{% for s in cohort.students.all %}{{ s.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
                         Edit
                     </a>
@@ -158,18 +159,27 @@
                             </select>
                         </div>
                         <div class="col-12 mb-3">
-                            <label class="smaller fw-bold mb-1">Select Students (Dept: {{ request.user.department.name }})</label>
+                            <label class="smaller fw-bold mb-1">Select Students (Depts: {% for d in departments %}{{ d.code }}{% if not forloop.last %}, {% endif %}{% endfor %})</label>
                             <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
                                 {% for student in dept_students %}
                                 <div class="form-check smaller mb-1">
                                     <input class="form-check-input cohort-student" type="checkbox" name="student_ids"
                                         value="{{ student.id }}" id="st{{ student.id }}">
                                     <label class="form-check-label" for="st{{ student.id }}">
-                                        {{ student.user.full_name }} ({{ student.roll_no }})
+                                        {{ student.user.full_name }} ({{ student.roll_no }}) · {{ student.department.code }}
                                     </label>
                                 </div>
                                 {% endfor %}
                             </div>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="smaller fw-bold mb-1">Department</label>
+                            <select name="department_id" id="cohortDepartment" class="form-select smaller" required>
+                                <option value="">Select Department</option>
+                                {% for d in departments %}
+                                <option value="{{ d.id }}">{{ d.name }} ({{ d.code }})</option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -355,6 +365,7 @@
             document.getElementById('cohortId').value = editMode ? button.getAttribute('data-cohort-id') : '';
             document.getElementById('cohortName').value = editMode ? button.getAttribute('data-cohort-name') : '';
             document.getElementById('cohortType').value = editMode ? button.getAttribute('data-cohort-type') : 'training';
+            document.getElementById('cohortDepartment').value = editMode ? (button.getAttribute('data-cohort-department') || '') : '';
 
             const selected = (editMode ? (button.getAttribute('data-cohort-students') || '') : '').split(',').filter(Boolean);
             document.querySelectorAll('.cohort-student').forEach(cb => {

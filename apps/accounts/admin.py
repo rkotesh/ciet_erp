@@ -6,8 +6,8 @@ from apps.accounts.models import User, OTPRecord
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('email', 'full_name', 'role', 'department', 'is_active', 'is_staff', 'created_at')
-    list_filter = ('role', 'is_active', 'is_staff', 'department')
+    list_display = ('email', 'full_name', 'role', 'get_departments', 'is_active', 'is_staff', 'created_at')
+    list_filter = ('role', 'is_active', 'is_staff', 'departments')
     search_fields = ('email', 'full_name', 'role')
     ordering = ('-created_at',)
     list_per_page = 25
@@ -16,14 +16,14 @@ class UserAdmin(BaseUserAdmin):
 
     fieldsets = (
         ('🔐 Credentials', {'fields': ('email', 'password')}),
-        ('👤 Personal Info', {'fields': ('full_name', 'role', 'department', 'phone')}),
+        ('👤 Personal Info', {'fields': ('full_name', 'role', 'departments', 'phone')}),
         ('✅ Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('📅 Timestamps', {'fields': ('last_login', 'created_at', 'updated_at', 'last_login_ip'), 'classes': ('collapse',)}),
     )
     add_fieldsets = (
         ('Create New User', {
             'classes': ('wide',),
-            'fields': ('email', 'full_name', 'role', 'department', 'phone', 'password1', 'password2', 'is_active', 'is_staff'),
+            'fields': ('email', 'full_name', 'role', 'departments', 'phone', 'password1', 'password2', 'is_active', 'is_staff'),
         }),
     )
 
@@ -33,6 +33,10 @@ class UserAdmin(BaseUserAdmin):
             obj.is_staff = True
             obj.is_superuser = True
         super().save_model(request, obj, form, change)
+
+    def get_departments(self, obj):
+        return ", ".join(obj.departments.values_list('code', flat=True))
+    get_departments.short_description = 'Departments'
 
 
 @admin.register(OTPRecord)

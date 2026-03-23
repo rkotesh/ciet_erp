@@ -12,6 +12,18 @@ class Department(BaseModel):
         return f"{self.code} — {self.name}"
 
 
+class Section(BaseModel):
+    name = models.CharField(max_length=10)  # A, B, C
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='sections')
+
+    class Meta:
+        unique_together = ('department', 'name')
+        ordering = ['department__code', 'name']
+
+    def __str__(self):
+        return f"{self.department.code} - {self.name}"
+
+
 class Subject(BaseModel):
     class SubjectType(models.TextChoices):
         THEORY = 'Theory', 'Theory'

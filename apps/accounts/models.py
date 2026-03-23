@@ -1,6 +1,9 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from apps.core.models import BaseModel
 from django.db import models
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
+from django.apps import apps
 
 
 class UserManager(BaseUserManager):
@@ -33,7 +36,7 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
     email         = models.EmailField(unique=True)
     phone         = models.CharField(max_length=15, blank=True, default='')
     role          = models.CharField(max_length=20, choices=Role.choices)
-    department    = models.ForeignKey('academics.Department', on_delete=models.SET_NULL, null=True, blank=True, related_name='staff')
+    departments   = models.ManyToManyField('academics.Department', blank=True, related_name='staff')
     is_active     = models.BooleanField(default=True)
     is_staff      = models.BooleanField(default=False)
     last_login_ip = models.GenericIPAddressField(null=True, blank=True)
@@ -72,3 +75,30 @@ class OTPRecord(BaseModel):
 
     def __str__(self):
         return f"OTP for {self.user.email} - {self.purpose}"
+
+
+@receiver(m2m_changed, sender=User.departments.through)
+def ensure_ai_aiml_for_common_faculty(sender, instance, action, **kwargs):
+    if action not in ['post_add', 'post_set']:
+        return
+    Department = apps.get_model('academics', 'Department')
+    if instance.role in [User.Role.FACULTY, User.Role.MENTOR]:
+        ai = Department.objects.filter(code__iexact='AI').first() or Department.objects.filter(name__iexact='AI').first()
+        aiml = Department.objects.filter(code__iexact='AIML').first() or Department.objects.filter(name__iexact='AIML').first()
+        if not ai and not aiml:
+            return
+        current_ids = set(instance.departments.values_list('id', flat=True))
+        if (ai and ai.id in current_ids) or (aiml and aiml.id in current_ids):
+            to_add = []
+            if ai and ai.id not in current_ids:
+                to_add.append(ai)
+            if aiml and aiml.id not in current_ids:
+                to_add.append(aiml)
+            if to_add:
+                instance.departments.add(*to_add)
+        return
+    if instance.role == User.Role.HOD:
+        dept_ids = list(instance.departments.values_list('id', flat=True))
+        if len(dept_ids) > 1:
+            instance.departments.set([dept_ids[0]])
+        return

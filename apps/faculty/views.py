@@ -13,7 +13,7 @@ from apps.accounts.models import User
 from apps.academics.models import Department, Subject, Marks, Attendance
 from apps.students.models import StudentProfile
 from apps.faculty.models import (
-    MentorAssignment, LessonPlan, Timetable, AcademicCalendar,
+    StudentMentorAssignment, LessonPlan, Timetable, AcademicCalendar,
     TrainingProgram, SyllabusCoverage, Cohort, InstitutionCourse,
     CourseMaterial, CourseAssessment, StudentCourseScore
 )
@@ -43,32 +43,27 @@ class HODDashboardView(RoleRequiredMixin, View):
     allowed_roles = ['HOD']
 
     def get(self, request):
-        dept = request.user.department
+        dept = Department.objects.filter(hod=request.user).first()
         if not dept:
             return render(request, 'faculty/hod_dashboard.html', {'no_dept': True})
 
         # ── Faculty in dept ──
         faculty_list = User.objects.filter(
-            department=dept, role__in=['Faculty', 'Mentor'], is_active=True
+            departments=dept, role__in=['Faculty', 'Mentor'], is_active=True
         ).annotate(subject_count=Count('subjects_taught'))
 
         # ── Mentor list for assignment ──
-        mentors = User.objects.filter(department=dept, role='Mentor', is_active=True)
+        mentors = User.objects.filter(departments=dept, role='Mentor', is_active=True)
 
-        # ── Unassigned students (no mentor assignment this year) ──
         current_year = f"{now().year}-{now().year + 1}"
-        assigned_ids = MentorAssignment.objects.filter(
-            academic_year=current_year
-        ).values_list('student_id', flat=True)
-        unassigned_students = StudentProfile.objects.filter(
-            department=dept, is_deleted=False
-        ).exclude(id__in=assigned_ids).select_related('user')
-
-        # ── Existing assignments ──
-        assignments = MentorAssignment.objects.filter(
+        direct_assignments = StudentMentorAssignment.objects.filter(
             academic_year=current_year,
-            student__department=dept
-        ).select_related('mentor', 'student__user')
+            students__department=dept
+        ).distinct().prefetch_related('students', 'mentor')
+
+        dept_students = StudentProfile.objects.filter(
+            department=dept, is_deleted=False
+        ).select_related('user')
 
         # ── Dept performance (avg CGPA by batch) ──
         batch_performance = (
@@ -128,9 +123,9 @@ class HODDashboardView(RoleRequiredMixin, View):
 
         # ── Principal-forwarded summary (graph) ──
         total_students = StudentProfile.objects.filter(department=dept, is_deleted=False).count()
-        assigned_count = MentorAssignment.objects.filter(
-            academic_year=current_year, student__department=dept
-        ).count()
+        assigned_count = StudentMentorAssignment.objects.filter(
+            academic_year=current_year, students__department=dept
+        ).values('students__id').distinct().count()
         unassigned_count = max(total_students - assigned_count, 0)
         avg_cgpa = (
             StudentProfile.objects
@@ -144,8 +139,8 @@ class HODDashboardView(RoleRequiredMixin, View):
             'dept':               dept,
             'faculty_list':       faculty_list,
             'mentors':            mentors,
-            'unassigned_students': unassigned_students,
-            'assignments':        assignments,
+            'direct_assignments': direct_assignments,
+            'dept_students':      dept_students,
             'current_year':       current_year,
             'lesson_plans':       lesson_plans,
             'timetables':         timetables,
@@ -164,17 +159,20 @@ class HODDashboardView(RoleRequiredMixin, View):
     def post(self, request):
         """Handle mentor assignments and file uploads."""
         action = request.POST.get('action')
-        dept   = request.user.department
+        dept = Department.objects.filter(hod=request.user).first()
+        if not dept:
+            return redirect('hod-dashboard')
         current_year = f"{now().year}-{now().year + 1}"
 
-        if action == 'assign_mentor':
+        if action == 'assign_mentor_students':
             mentor_id  = request.POST.get('mentor_id')
-            student_id = request.POST.get('student_id')
-            if mentor_id and student_id:
-                MentorAssignment.objects.update_or_create(
-                    mentor_id=mentor_id, student_id=student_id, academic_year=current_year,
+            student_ids = request.POST.getlist('student_ids')
+            if mentor_id and student_ids:
+                assignment, _ = StudentMentorAssignment.objects.update_or_create(
+                    mentor_id=mentor_id, academic_year=current_year,
                     defaults={'assigned_by': request.user}
                 )
+                assignment.students.set(student_ids)
 
         elif action == 'upload_lesson_plan':
             subject_id = request.POST.get('subject_id')
@@ -274,11 +272,12 @@ class MentorDashboardView(RoleRequiredMixin, View):
 
     def get(self, request):
         current_year = f"{now().year}-{now().year + 1}"
-        assignments = MentorAssignment.objects.filter(
-            mentor=request.user, academic_year=current_year
-        ).select_related('student__user', 'student__department')
-
-        students = [a.student for a in assignments]
+        direct_students = StudentProfile.objects.filter(
+            direct_mentor_assignments__mentor=request.user,
+            direct_mentor_assignments__academic_year=current_year,
+            is_deleted=False
+        ).select_related('user', 'department', 'section').distinct()
+        students = direct_students
 
         # ── Per-student academic overview ──
         student_stats = []
@@ -296,8 +295,8 @@ class MentorDashboardView(RoleRequiredMixin, View):
 
         # ── Subjects mentor can upload marks for ──
         subjects = Subject.objects.filter(
-            department=request.user.department
-        ).select_related('department') if request.user.department else Subject.objects.none()
+            department__in=request.user.departments.all()
+        ).select_related('department') if request.user.departments.exists() else Subject.objects.none()
 
         # ── Institution courses published to this mentor's dashboard ──
         inst_courses = InstitutionCourse.objects.filter(
@@ -307,7 +306,7 @@ class MentorDashboardView(RoleRequiredMixin, View):
         return render(request, 'faculty/mentor_dashboard.html', {
             'student_stats':  student_stats,
             'subjects':       subjects,
-            'assignments':    assignments,
+            'assignments':    [],
             'inst_courses':   inst_courses,
             'current_year':   current_year,
         })
@@ -351,6 +350,7 @@ class FacultyDashboardView(RoleRequiredMixin, View):
     allowed_roles = ['Faculty', 'HOD', 'Mentor']
 
     def get(self, request):
+        departments = request.user.departments.all()
         # ── My subjects ──
         my_subjects = Subject.objects.filter(
             faculty=request.user, is_deleted=False
@@ -371,9 +371,9 @@ class FacultyDashboardView(RoleRequiredMixin, View):
             }
 
         # ── Cohorts in my department (including admin-created) ──
-        if request.user.department:
+        if departments.exists():
             my_cohorts = Cohort.objects.filter(
-                department=request.user.department,
+                department__in=departments,
                 is_deleted=False,
                 is_active=True
             ).annotate(student_count=Count('students'))
@@ -384,7 +384,7 @@ class FacultyDashboardView(RoleRequiredMixin, View):
         my_courses = InstitutionCourse.objects.filter(
             Q(created_by=request.user) |
             Q(created_by__is_superuser=True) |
-            Q(cohorts__department=request.user.department)
+            Q(cohorts__department__in=departments)
         ).filter(is_deleted=False).distinct().prefetch_related('cohorts', 'assessments', 'materials')
 
         # ── Student performance in my subjects ──
@@ -404,8 +404,8 @@ class FacultyDashboardView(RoleRequiredMixin, View):
 
         # ── All students for cohort creation ──
         dept_students = StudentProfile.objects.filter(
-            department=request.user.department, is_deleted=False
-        ).select_related('user') if request.user.department else StudentProfile.objects.none()
+            department__in=departments, is_deleted=False
+        ).select_related('user', 'department') if departments.exists() else StudentProfile.objects.none()
 
         return render(request, 'faculty/faculty_dashboard.html', {
             'my_subjects':        my_subjects,
@@ -414,6 +414,7 @@ class FacultyDashboardView(RoleRequiredMixin, View):
             'my_courses':         my_courses,
             'subject_performance': subject_performance,
             'dept_students':      dept_students,
+            'departments':        departments,
             'perf_labels':        json.dumps(perf_labels),
             'perf_values':        json.dumps(perf_values),
         })
@@ -428,10 +429,16 @@ class FacultyDashboardView(RoleRequiredMixin, View):
             batch    = request.POST.get('batch', '')
             desc     = request.POST.get('description', '')
             stud_ids = request.POST.getlist('student_ids')
+            department_id = request.POST.get('department_id')
             if name:
+                department = None
+                if department_id:
+                    department = Department.objects.filter(
+                        id=department_id, id__in=request.user.departments.values_list('id', flat=True)
+                    ).first()
                 cohort = Cohort.objects.create(
                     name=name, created_by=request.user,
-                    department=request.user.department,
+                    department=department,
                     cohort_type=ctype, batch=batch, description=desc
                 )
                 if stud_ids:
@@ -445,16 +452,22 @@ class FacultyDashboardView(RoleRequiredMixin, View):
             batch     = request.POST.get('batch', '')
             desc      = request.POST.get('description', '')
             stud_ids  = request.POST.getlist('student_ids')
+            department_id = request.POST.get('department_id')
             if cohort_id and name:
                 cohort = get_object_or_404(Cohort, id=cohort_id, is_deleted=False)
-                if cohort.department == request.user.department and (
+                if (not cohort.department or cohort.department_id in request.user.departments.values_list('id', flat=True)) and (
                     cohort.created_by == request.user or cohort.created_by.is_superuser
                 ):
+                    if department_id:
+                        new_dept = Department.objects.filter(
+                            id=department_id, id__in=request.user.departments.values_list('id', flat=True)
+                        ).first()
+                        cohort.department = new_dept
                     cohort.name = name
                     cohort.cohort_type = ctype
                     cohort.batch = batch
                     cohort.description = desc
-                    cohort.save(update_fields=['name', 'cohort_type', 'batch', 'description', 'updated_at'])
+                    cohort.save(update_fields=['name', 'cohort_type', 'batch', 'description', 'department', 'updated_at'])
                     cohort.students.set(stud_ids)
 
         # ── Create Institution Course ──
@@ -600,9 +613,14 @@ class PendingCertificationsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        if not request.user.department:
+        dept_ids = list(request.user.departments.values_list('id', flat=True))
+        if request.user.role == 'HOD' and not dept_ids:
+            hod_dept = Department.objects.filter(hod=request.user).first()
+            if hod_dept:
+                dept_ids = [hod_dept.id]
+        if not dept_ids:
             return Response([])
-        certs = selectors.get_pending_certifications_for_dept(request.user.department.id)
+        certs = selectors.get_pending_certifications_for_dept(dept_ids)
         data = [{"id": c.id, "title": c.title, "student": c.student.roll_no,
                  "student_id": c.student.id,
                  "issuer": c.issuer, "date": c.issued_date} for c in certs]

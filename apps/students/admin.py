@@ -8,8 +8,8 @@ from apps.students.models import (
 
 @admin.register(StudentProfile)
 class StudentProfileAdmin(admin.ModelAdmin):
-    list_display = ('roll_no', 'get_name', 'get_email', 'department', 'batch', 'cgpa', 'is_public', 'get_public_link')
-    list_filter = ('department', 'batch', 'is_public')
+    list_display = ('roll_no', 'get_name', 'get_email', 'department', 'section', 'batch', 'cgpa', 'is_public', 'get_public_link')
+    list_filter = ('department', 'section', 'batch', 'is_public')
     search_fields = ('roll_no', 'user__full_name', 'user__email')
     ordering = ('roll_no',)
     list_per_page = 30
