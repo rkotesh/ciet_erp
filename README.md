@@ -53,13 +53,3 @@ API documentation is available at `/api/schema/swagger/` when the server is runn
 4. Check your inbox/SMS, enter the 6-digit OTP in the input box.
 5. Click `Verify`.
 6. Status changes from `Not Verified` to `Verified`.
-
-### OTP Delivery Setup (for realtime delivery)
-- Email OTP uses Django email backend (`DEFAULT_FROM_EMAIL` and SMTP/email settings in `.env`).
-- SMS OTP uses Twilio when configured:
-  - `TWILIO_ACCOUNT_SID`
-  - `TWILIO_AUTH_TOKEN`
-  - `TWILIO_FROM_NUMBER`
-- Or a generic SMS API:
-  - `SMS_API_URL`
-  - optional `SMS_API_TOKEN`, `SMS_API_PHONE_FIELD`, `SMS_API_MESSAGE_FIELD`
