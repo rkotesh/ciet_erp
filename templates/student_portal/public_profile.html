@@ -778,8 +778,7 @@
                             <tr>
                                 <td class="fw-semibold">{{ e.name }}</td>
                                 <td class="text-muted">{{ e.organizer }}</td>
-                                <td class="text-muted">{% if e.event_date %}{{ e.event_date|date:"d M Y" }}{% else %}—{%
-                                    endif %}</td>
+                                <td class="text-muted">{% if e.event_date %}{{ e.event_date|date:"d M Y" }}{% else %}—{% endif %}</td>
                                 <td>{% if e.position %}<span class="edu-score" style="font-size:.72rem;">{{ e.position }}</span>{% else %}—{% endif %}</td>
                             </tr>
                             {% endfor %}
@@ -818,8 +817,7 @@
                                             class="bi bi-patch-check-fill"></i> Verified</span>{% endif %}
                                 </div>
                                 <div class="text-muted" style="font-size:.8rem;margin-top:3px;">
-                                    {{ r.get_outcome_display }}{% if r.publisher %} &bull; {{ r.publisher }}{% endif
-                                    %}{% if r.published_date %} &bull; {{ r.published_date|date:"M Y" }}{% endif %}
+                                    {{ r.get_outcome_display }}{% if r.publisher %} &bull; {{ r.publisher }}{% endif %}{% if r.published_date %} &bull; {{ r.published_date|date:"M Y" }}{% endif %}
                                 </div>
                             </div>
                             {% if r.publication_url %}
