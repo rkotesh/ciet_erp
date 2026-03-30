@@ -138,9 +138,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
+mongodb_name = env('MONGODB_NAME', default='erp_portal')
 DATABASES = {
-    'default': env.db('DATABASE_URL', default=f'sqlite:///{BASE_DIR}/db.sqlite3')
+    'default': {
+        'ENGINE': 'django_mongodb_backend',
+        'HOST': env('MONGODB_URI', default=f'mongodb://127.0.0.1:27017/{mongodb_name}'),
+        'NAME': mongodb_name,
+    }
 }
 
 
@@ -183,7 +187,7 @@ STATIC_URL = 'static/'
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = 'django_mongodb_backend.fields.ObjectIdAutoField'
 
 # Auth User Model
 AUTH_USER_MODEL = 'accounts.User'

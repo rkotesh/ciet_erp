@@ -29,8 +29,29 @@ A comprehensive College ERP Web Application built using Django and the Antigravi
 ## 🛠 Tech Stack
 - **Backend**: Django 5.x, DRF, Celery, Redis
 - **Frontend**: HTMX, Chart.js, Vanilla CSS
-- **Database**: PostgreSQL (Production), SQLite (Dev)
+- **Database**: MongoDB Atlas
 - **Monitoring**: Sentry, Prometheus/Grafana
+
+## MongoDB Setup
+This project is configured to use MongoDB as its primary database through the official Django MongoDB backend.
+
+1. Add your MongoDB connection settings to `.env`:
+   ```env
+   MONGODB_NAME=erp_portal
+   MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>/<database>?appName=Cluster0
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements/development.txt
+   ```
+3. Run the server:
+   ```bash
+   python manage.py runserver
+   ```
+
+## Data Migration Utilities
+- `scripts/migrate_sqlite_to_mongodb.py`: copies legacy SQLite tables into MongoDB collections.
+- `scripts/repair_mongodb_types.py`: repairs imported MongoDB document types so Django can read them correctly.
 
 ## 📖 Key Sections (Rule Book Implementation)
 - **RBAC**: Implemented in `apps.accounts`, configured via `setup_roles` command.
