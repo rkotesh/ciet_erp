@@ -8,6 +8,9 @@ from django.views.generic import TemplateView
 from django.utils.timezone import now
 from django.db.models import Count, Avg, Q, Sum
 from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 from apps.accounts.models import User
 from apps.academics.models import Department, Section, Subject, Marks, Attendance
@@ -35,7 +38,6 @@ class RoleRequiredMixin(LoginRequiredMixin):
         if self.allowed_roles and request.user.role not in self.allowed_roles:
             return redirect('dashboard')
         return super().dispatch(request, *args, **kwargs)
-
 
 class FacultyHubTemplateView(RoleRequiredMixin, TemplateView):
     allowed_roles = ['Faculty', 'Mentor', 'HOD']
@@ -270,6 +272,10 @@ class FacultyHubInstitutionCoursesView(FacultyHubTemplateView):
 
 class FacultyHubSettingsView(FacultyHubTemplateView):
     template_name = 'faculty/settings.html'
+
+
+class MentorTemplatePageView(RoleRequiredMixin, TemplateView):
+    allowed_roles = ['Mentor']
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -924,3 +930,390 @@ class PendingCertificationsView(APIView):
                  "student_id": c.student.id,
                  "issuer": c.issuer, "date": c.issued_date} for c in certs]
         return Response(data)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def mentor_cohorts(request):
+    """API endpoint for mentor cohorts listing and bulk actions.
+
+    GET: return JSON list of cohorts the user can see.
+    POST: accept JSON { action: 'delete_cohorts', cohort_ids: [...] }
+    """
+    user = request.user
+    if request.method == 'GET':
+        # Determine cohorts visible to the user
+        departments = list(user.departments.all())
+        # students directly assigned to mentor (if mentor)
+        students = StudentProfile.objects.filter(direct_mentor_assignments__mentor=user).distinct()
+
+        cohorts_qs = Cohort.objects.filter(is_active=True, is_deleted=False)
+        cohorts_qs = cohorts_qs.filter(
+            Q(created_by=user) |
+            Q(department__in=departments) |
+            Q(students__in=students)
+        ).distinct()
+
+        cohorts = []
+        for c in cohorts_qs:
+            cohorts.append({
+                'id': c.id,
+                'name': c.name,
+                'batch': c.batch,
+                'cohort_type': c.cohort_type,
+                'description': c.description or '',
+                'student_count': c.students.count(),
+            })
+        return JsonResponse({'cohorts': cohorts})
+
+    # POST
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except Exception:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+
+    action = payload.get('action')
+    if action == 'delete_cohorts':
+        cohort_ids = payload.get('cohort_ids', []) or []
+        qs = Cohort.objects.filter(id__in=cohort_ids, is_deleted=False)
+        deleted = 0
+        for cohort in qs:
+            # allow delete if created_by user, superuser, or department owner
+            if cohort.created_by == user or user.is_superuser or (cohort.department and cohort.department in user.departments.all()):
+                cohort.is_deleted = True
+                cohort.save(update_fields=['is_deleted', 'updated_at'])
+                deleted += 1
+        return JsonResponse({'success': True, 'message': f'{deleted} cohorts deleted'})
+
+    return JsonResponse({'success': False, 'message': 'Unknown action'}, status=400)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def mentor_courses_api(request):
+    """Return JSON list of institution courses visible to the mentor and handle CRUD operations."""
+    user = request.user
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'create_course').strip()
+
+        # ── UPDATE ACTION ──
+        if action == 'update':
+            course_id = request.POST.get('course_id', '').strip()
+            if not course_id:
+                return JsonResponse({'success': False, 'message': 'Course ID is required'}, status=400)
+
+            try:
+                course = InstitutionCourse.objects.get(id=course_id, is_deleted=False)
+            except InstitutionCourse.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Course not found'}, status=404)
+
+            # ── Permission check: only creator or superuser can edit ──
+            if course.created_by != user and not user.is_superuser:
+                return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+            # ── Update fields ──
+            name = request.POST.get('name', '').strip()
+            if not name:
+                return JsonResponse({'success': False, 'message': 'Course name is required'}, status=400)
+
+            course.name = name
+            course.category = request.POST.get('category', course.category)
+            course.description = request.POST.get('description', '').strip()
+            course.is_published_to_profile = request.POST.get('is_published_to_profile') == 'on'
+            course.save(update_fields=['name', 'category', 'description', 'is_published_to_profile', 'updated_at'])
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Course updated successfully',
+                'course': {
+                    'id': course.id,
+                    'name': course.name,
+                    'category': course.category,
+                    'description': course.description or '',
+                    'published': bool(course.is_published_to_profile),
+                    'department': 'CSE-AI',
+                    'academic_year': 'Year I',
+                    'section': 'A',
+                    'cohort_name': ', '.join([ch.name for ch in course.cohorts.all()]) if course.cohorts.count() > 0 else '2024',
+                    'materials_count': 0,
+                    'is_institutional': False,
+                }
+            }, status=200)
+
+        # ── DELETE ACTION ──
+        elif action == 'delete':
+            course_id = request.POST.get('course_id', '').strip()
+            if not course_id:
+                return JsonResponse({'success': False, 'message': 'Course ID is required'}, status=400)
+
+            try:
+                course = InstitutionCourse.objects.get(id=course_id, is_deleted=False)
+            except InstitutionCourse.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Course not found'}, status=404)
+
+            # ── Permission check: only creator or superuser can delete ──
+            if course.created_by != user and not user.is_superuser:
+                return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+
+            # ── Soft delete ──
+            course.is_deleted = True
+            course.save(update_fields=['is_deleted', 'updated_at'])
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Course deleted successfully'
+            }, status=200)
+
+        # ── CREATE ACTION (default) ──
+        else:
+            name = request.POST.get('name', '').strip()
+            category = request.POST.get('category', 'other')
+            description = request.POST.get('description', '').strip()
+            publish = request.POST.get('is_published_to_profile') == 'on'
+            cohort_ids = request.POST.getlist('cohort_ids')
+
+            if not name:
+                return JsonResponse({'success': False, 'message': 'Course name is required'}, status=400)
+
+            course = InstitutionCourse.objects.create(
+                name=name,
+                category=category,
+                created_by=user,
+                description=description,
+                is_published_to_profile=publish,
+            )
+            if cohort_ids:
+                course.cohorts.set(cohort_ids)
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Course created successfully',
+                'course': {
+                    'id': course.id,
+                    'name': course.name,
+                    'category': course.category,
+                    'description': course.description or '',
+                    'published': bool(course.is_published_to_profile),
+                    'cohort_count': course.cohorts.count(),
+                    'department': 'CSE-AI',
+                    'academic_year': 'Year I',
+                    'section': 'A',
+                    'cohort_name': ', '.join([ch.name for ch in course.cohorts.all()]) if course.cohorts.count() > 0 else '2024',
+                    'materials_count': 0,
+                    'is_institutional': False,
+                }
+            }, status=201)
+
+    # ── GET: Determine visible courses ──
+    # created_by user, superuser, or courses linked to user's departments/cohorts
+    departments = list(user.departments.all())
+    students = StudentProfile.objects.filter(direct_mentor_assignments__mentor=user).distinct()
+
+    qs = InstitutionCourse.objects.filter(is_deleted=False).filter(
+        Q(created_by=user) |
+        Q(created_by__is_superuser=True) |
+        Q(cohorts__department__in=departments) |
+        Q(cohorts__students__in=students)
+    ).distinct()
+
+    courses = []
+    for c in qs:
+        # Get all students from this course's cohorts
+        students_in_course = StudentProfile.objects.filter(cohorts__in=c.cohorts.all()).distinct()
+        students_data = [
+            {
+                'id': str(student.id),
+                'first_name': student.user.first_name or '',
+                'last_name': student.user.last_name or '',
+                'roll_no': student.roll_no or '',
+                'department': str(student.department) if student.department else '',
+                'section': student.section or student.batch or '',
+                'batch': student.batch or '',
+                'email': student.personal_email or student.user.email or '',
+                'phone': student.personal_phone or '',
+            }
+            for student in students_in_course
+        ]
+        
+        # Add dummy data if no real students (for demonstration)
+        if not students_data:
+            students_data = [
+                {
+                    'id': 'dummy-1',
+                    'first_name': 'Rahul',
+                    'last_name': 'Sharma',
+                    'roll_no': 'CSE001',
+                    'department': 'CSE',
+                    'section': 'A',
+                    'batch': 'Batch-2024',
+                    'email': 'rahul.sharma@student.com',
+                    'phone': '+91-9876543210',
+                },
+                {
+                    'id': 'dummy-2',
+                    'first_name': 'Priya',
+                    'last_name': 'Patel',
+                    'roll_no': 'CSE002',
+                    'department': 'CSE',
+                    'section': 'A',
+                    'batch': 'Batch-2024',
+                    'email': 'priya.patel@student.com',
+                    'phone': '+91-9876543211',
+                },
+                {
+                    'id': 'dummy-3',
+                    'first_name': 'Arjun',
+                    'last_name': 'Kumar',
+                    'roll_no': 'CSE003',
+                    'department': 'CSE',
+                    'section': 'A',
+                    'batch': 'Batch-2024',
+                    'email': 'arjun.kumar@student.com',
+                    'phone': '+91-9876543212',
+                },
+                {
+                    'id': 'dummy-4',
+                    'first_name': 'Neha',
+                    'last_name': 'Singh',
+                    'roll_no': 'CSE004',
+                    'department': 'CSE',
+                    'section': 'A',
+                    'batch': 'Batch-2024',
+                    'email': 'neha.singh@student.com',
+                    'phone': '+91-9876543213',
+                },
+                {
+                    'id': 'dummy-5',
+                    'first_name': 'Vikram',
+                    'last_name': 'Desai',
+                    'roll_no': 'CSE005',
+                    'department': 'CSE',
+                    'section': 'A',
+                    'batch': 'Batch-2024',
+                    'email': 'vikram.desai@student.com',
+                    'phone': '+91-9876543214',
+                },
+                {
+                    'id': 'dummy-6',
+                    'first_name': 'Anjali',
+                    'last_name': 'Gupta',
+                    'roll_no': 'CSE006',
+                    'department': 'CSE',
+                    'section': 'A',
+                    'batch': 'Batch-2024',
+                    'email': 'anjali.gupta@student.com',
+                    'phone': '+91-9876543215',
+                },
+            ]
+        
+        # Get materials for this course
+        materials_data = [
+            {
+                'id': str(material.id),
+                'name': material.title,
+                'title': material.title,
+                'file': material.file.url if material.file else '',
+            }
+            for material in c.materials.all()
+        ]
+        
+        # Get sections from cohorts
+        sections_data = [
+            {
+                'id': str(cohort.id),
+                'name': cohort.name,
+                'code': cohort.name,
+            }
+            for cohort in c.cohorts.all()
+        ]
+        
+        courses.append({
+            'id': c.id,
+            'name': c.name,
+            'category': c.category,
+            'description': c.description or '',
+            'published': bool(c.is_published_to_profile),
+            'cohort_count': c.cohorts.count(),
+            'department': 'CSE-AI',  # Default, can be customized
+            'academic_year': 'Year I',  # Default, can be customized
+            'section': 'A',  # Default, can be customized
+            'cohort_name': ', '.join([ch.name for ch in c.cohorts.all()]) if c.cohorts.count() > 0 else '2024',
+            'materials_count': c.materials.count(),
+            'is_institutional': False,  # Can be set based on logic
+            'students': students_data,
+            'materials': materials_data,
+            'sections': sections_data,
+        })
+
+    # Provide a pool of available students (dummy) to populate Add Students modal
+    available_students = [
+        {
+            'id': 'avail-1',
+            'first_name': 'Rohan',
+            'last_name': 'Verma',
+            'roll_no': 'CSE007',
+            'department': 'CSE',
+            'section': 'B',
+            'batch': 'Batch-2024',
+            'email': 'rohan.verma@student.com',
+            'phone': '+91-9876543216',
+        },
+        {
+            'id': 'avail-2',
+            'first_name': 'Divya',
+            'last_name': 'Shah',
+            'roll_no': 'CSE008',
+            'department': 'CSE',
+            'section': 'B',
+            'batch': 'Batch-2024',
+            'email': 'divya.shah@student.com',
+            'phone': '+91-9876543217',
+        },
+        {
+            'id': 'avail-3',
+            'first_name': 'Sanjay',
+            'last_name': 'Kohli',
+            'roll_no': 'CSE009',
+            'department': 'CSE',
+            'section': 'B',
+            'batch': 'Batch-2024',
+            'email': 'sanjay.kohli@student.com',
+            'phone': '+91-9876543218',
+        },
+        {
+            'id': 'avail-4',
+            'first_name': 'Pooja',
+            'last_name': 'Reddy',
+            'roll_no': 'CSE010',
+            'department': 'CSE',
+            'section': 'B',
+            'batch': 'Batch-2024',
+            'email': 'pooja.reddy@student.com',
+            'phone': '+91-9876543219',
+        },
+        {
+            'id': 'avail-5',
+            'first_name': 'Nitin',
+            'last_name': 'Patil',
+            'roll_no': 'CSE011',
+            'department': 'CSE',
+            'section': 'B',
+            'batch': 'Batch-2024',
+            'email': 'nitin.patil@student.com',
+            'phone': '+91-9876543220',
+        },
+        {
+            'id': 'avail-6',
+            'first_name': 'Shreya',
+            'last_name': 'Iyer',
+            'roll_no': 'CSE012',
+            'department': 'CSE',
+            'section': 'B',
+            'batch': 'Batch-2024',
+            'email': 'shreya.iyer@student.com',
+            'phone': '+91-9876543221',
+        },
+    ]
+
+    return JsonResponse({'courses': courses, 'available_students': available_students})
