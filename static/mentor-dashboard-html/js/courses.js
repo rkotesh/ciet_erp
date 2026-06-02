@@ -73,20 +73,6 @@ async function loadCourses() {
  * Setup event listeners
  */
 function setupEventListeners() {
-  // New Course button
-  const newCourseBtn = document.getElementById('btn-new-course');
-  if (newCourseBtn) {
-    newCourseBtn.addEventListener('click', () => {
-      document.getElementById('create-course-modal').classList.add('active');
-    });
-  }
-
-  // Course form submission
-  const courseForm = document.getElementById('course-form');
-  if (courseForm) {
-    courseForm.addEventListener('submit', handleCreateCourse);
-  }
-
   // Edit course form submission
   const editCourseForm = document.getElementById('edit-course-form');
   if (editCourseForm) {
@@ -641,92 +627,6 @@ async function downloadScoreTemplate() {
 /**
  * Load cohorts for selection in create course modal
  */
-async function loadCohortsForSelection() {
-  // This function is no longer needed with the new form structure
-  // The new form uses individual fields instead of checkbox selection
-  console.log('New form structure does not require loading cohorts');
-}
-
-/**
- * Handle course creation form submission
- */
-async function handleCreateCourse(e) {
-  e.preventDefault();
-
-  const apiUrl = window.MENTOR_COURSES_API || '/faculty-portal/mentor/courses/data/';
-
-  const courseName = document.getElementById('course-name').value.trim();
-  const courseDepartment = document.getElementById('course-department').value;
-  const courseAcademicYear = document.getElementById('course-academic-year').value.trim();
-  const courseSection = document.getElementById('course-section').value;
-  const courseCohortName = document.getElementById('course-cohort-name').value.trim();
-  const isInstitutional = document.getElementById('course-institutional').checked;
-  const courseFile = document.getElementById('course-materials').files[0];
-
-  if (!courseName) {
-    showStatus('Please fill in all required fields', 'error');
-    return;
-  }
-
-  try {
-    showStatus('Creating course...', 'info');
-
-    const formData = new FormData();
-    formData.append('action', 'create_course');
-    formData.append('name', courseName);
-    formData.append('department', courseDepartment);
-    formData.append('academic_year', courseAcademicYear);
-    formData.append('section', courseSection);
-    formData.append('cohort_name', courseCohortName);
-    formData.append('category', 'other');
-    formData.append('description', '');
-    formData.append('is_institutional', isInstitutional ? 'on' : 'off');
-    
-    if (courseFile) {
-      formData.append('course_material', courseFile);
-    }
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json',
-        'X-CSRFToken': getCsrfToken(),
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      const text = await response.text();
-      throw new Error('Expected JSON but received non-JSON response: ' + text.slice(0, 200));
-    }
-
-    const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.message || 'Course creation failed');
-    }
-
-    showStatus('Course created successfully!', 'success');
-    
-    // Close modal and reset form
-    document.getElementById('create-course-modal').classList.remove('active');
-    document.getElementById('course-form').reset();
-    
-    // Reload courses
-    await loadCourses();
-    renderCourses();
-
-  } catch (error) {
-    console.error('Error creating course:', error);
-    showStatus('Error creating course: ' + error.message, 'error');
-  }
-}
 
 /**
  * Download template for specific course

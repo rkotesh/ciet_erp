@@ -413,7 +413,7 @@ body.menu-open {
 
 .btn-primary {
   background-color: var(--primary);
-  color: var(--primary-foreground);
+  color: #FFFFFF;
 }
 .btn-primary:hover { opacity: 0.9; }
 

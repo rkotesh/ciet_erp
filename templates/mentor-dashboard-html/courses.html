@@ -1341,14 +1341,14 @@
 
 <nav id="mobile-menu" class="mobile-menu" aria-label="Mobile navigation">
   <div class="mobile-menu-links">
-    <a class="mobile-menu-link" href="{% url 'mentor-dashboard' %}">Home</a>
-    <a class="mobile-menu-link" href="{% url 'mentor-profile' %}">Mentor Profile</a>
-    <a class="mobile-menu-link" href="{% url 'mentor-students' %}">Assigned Students</a>
-    <a class="mobile-menu-link" href="{% url 'mentor-cohorts' %}">Cohorts</a>
-    <a class="mobile-menu-link" href="{% url 'mentor-courses' %}">Courses</a>
-    <a class="mobile-menu-link" href="{% url 'mentor-assign-marks' %}">Assign Marks</a>
-    <a class="mobile-menu-link" href="{% url 'mentor-upload-attendance' %}">Upload Attendance</a>
-  </div>
+   <a class="mobile-menu-link menu-home" href="{% url 'mentor-dashboard' %}">Home</a>
+      <a class="mobile-menu-link menu-profile" href="{% url 'mentor-profile' %}">Mentor Profile</a>
+      <a class="mobile-menu-link menu-students" href="{% url 'mentor-students' %}">Assigned Students</a>
+      <a class="mobile-menu-link menu-courses" href="{% url 'mentor-courses' %}">Courses</a>
+      <a class="mobile-menu-link menu-assign-marks" href="{% url 'mentor-assign-marks' %}">Assign Marks</a>
+      <a class="mobile-menu-link menu-upload-attendance" href="{% url 'mentor-upload-attendance' %}">Upload Attendance</a>
+      <a class="mobile-menu-link menu-cohorts" href="{% url 'mentor-cohorts' %}">Cohorts</a>
+    </div>
 </nav>
 
 <!-- ── MAIN CONTENT ────────────────────────────────────── -->
@@ -1357,10 +1357,6 @@
   <div class="courses-header">
     <h1 class="courses-title">📖 Courses</h1>
     <div class="courses-actions">
-      <button id="btn-new-course" class="btn btn-primary btn-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        New Course
-      </button>
       <button id="btn-download-template" class="btn btn-outline btn-sm">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Download Template
@@ -1408,88 +1404,6 @@
   </div>
 
 </main>
-
-<!-- ── CREATE COURSE MODAL ──────────────────────────── -->
-<div id="create-course-modal" class="course-modal">
-  <div class="modal-content">
-    <button class="modal-close" aria-label="Close modal" onclick="document.getElementById('create-course-modal').classList.remove('active')">&times;</button>
-    <h2 class="modal-title">Create Course</h2>
-    
-    <form id="course-form">
-      <!-- Course Name -->
-      <div class="modal-section">
-        <label for="course-name" class="modal-label">Course Name</label>
-        <input type="text" id="course-name" class="search-input" placeholder="e.g. Machine Learning" required>
-      </div>
-
-      <!-- Department and Academic Year (Two columns) -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-        <div class="modal-section">
-          <label for="course-department" class="modal-label">Department</label>
-          <select id="course-department" class="filter-select">
-            <option value="">Select Dept</option>
-            <option value="cse">CSE</option>
-            <option value="ece">ECE</option>
-            <option value="eee">EEE</option>
-            <option value="mech">MECH</option>
-            <option value="civil">CIVIL</option>
-          </select>
-        </div>
-        <div class="modal-section">
-          <label for="course-academic-year" class="modal-label">Academic Year</label>
-          <input type="text" id="course-academic-year" class="search-input" placeholder="Year I">
-        </div>
-      </div>
-
-      <!-- Section and Cohort Name (Two columns) -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-        <div class="modal-section">
-          <label for="course-section" class="modal-label">Section (A-E)</label>
-          <select id="course-section" class="filter-select">
-            <option value="">Select Section</option>
-            <option value="A">Section A</option>
-            <option value="B">Section B</option>
-            <option value="C">Section C</option>
-            <option value="D">Section D</option>
-            <option value="E">Section E</option>
-          </select>
-        </div>
-        <div class="modal-section">
-          <label for="course-cohort-name" class="modal-label">Cohort Name</label>
-          <input type="text" id="course-cohort-name" class="search-input" placeholder="e.g. Regular 2024">
-        </div>
-      </div>
-
-      <!-- Course Materials -->
-      <div class="modal-section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <label class="modal-label" style="margin-bottom: 0;">Course Materials</label>
-          <span style="font-size: 0.8rem; color: #999999;">(Optional)</span>
-        </div>
-        <div class="file-upload-area" id="file-upload-area">
-          <div class="upload-icon">☁️</div>
-          <div class="upload-text">Click or drag files here</div>
-          <div class="upload-hint">PDF, DOCX, ZIP, PPTX, MP4 • Max 50MB</div>
-        </div>
-        <input type="file" id="course-materials" accept=".pdf,.docx,.zip,.pptx,.mp4" multiple>
-      </div>
-
-      <!-- Mark as Institutional Course Toggle -->
-      <div class="modal-section">
-        <label class="toggle-switch">
-          <input type="checkbox" id="course-institutional" class="toggle-checkbox">
-          <span class="toggle-label">Mark as Institutional Course</span>
-        </label>
-      </div>
-
-      <!-- Form Buttons -->
-      <div class="modal-form-buttons">
-        <button type="button" class="btn btn-outline" onclick="document.getElementById('create-course-modal').classList.remove('active')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Create & Publish</button>
-      </div>
-    </form>
-  </div>
-</div>
 
 <!-- ── EDIT COURSE MODAL ───────────────────────────────── -->
 <div id="edit-course-modal" class="course-modal">
