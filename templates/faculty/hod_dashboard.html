@@ -1,592 +1,1952 @@
-{% extends 'base.html' %}
 {% load static %}
+<!DOCTYPE html>
+<html lang="en">
 
-{% block title %}HOD Dashboard | {{ dept.name }}{% endblock %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="HOD Command Center - Chalapathi Institute of Engineering and Technology">
+    <title>HOD Dashboard | CIET</title>
+    
+    <!-- External Libs -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'faculty-hub/style.css' %}">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        :root {
+            --radius: 10px !important;
+            --radius-lg: 10px !important;
+            --radius-xl: 10px !important;
+        }
+        .card, .btn, .form-select, .form-control, .badge, .modal-content, .progress, .avatar-stub, .icon-wrap {
+            border-radius: 10px !important;
+        }
+        .tab-panel {
+            animation: fadeIn 0.4s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .bg-gradient-maroon {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        }
+        .text-maroon {
+            color: var(--primary) !important;
+        }
+        .btn-maroon {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white !important;
+            box-shadow: var(--shadow-primary);
+        }
+        .btn-maroon:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .progress-bar-maroon {
+            background-color: var(--primary) !important;
+        }
+        .sidebar-content {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 80px);
+        }
+        .sidebar-content nav {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        .sidebar-overlay {
+            background: transparent !important;
+            backdrop-filter: none !important;
+        }
+        @media (min-width: 992px) {
+            .sidebar-overlay {
+                display: none !important;
+                pointer-events: none !important;
+            }
+        }
+        .directory-switcher .btn-check:checked + .btn {
+            background-color: var(--primary) !important;
+            color: white !important;
+            box-shadow: var(--shadow-primary);
+        }
+        .directory-switcher .btn {
+            transition: all 0.2s ease;
+            border: none !important;
+        }
+        
+        /* Hide sidebar completely and force main content full width */
+        .sidebar {
+            display: none !important;
+        }
+        .main-content {
+            margin-left: 0 !important;
+            width: 100% !important;
+            padding-bottom: 80px !important;
+        }
+        #sidebar-toggle {
+            display: none !important;
+        }
+        
+        /* Bottom Navigation Bar styled identically to student portal but using HOD Maroon palette */
+        .bottom-nav {
+            position: fixed;
+            left: 50%;
+            bottom: 16px;
+            width: min(720px, calc(100% - 28px));
+            height: 54px;
+            background: rgba(143, 8, 48, 0.96); /* Deep Maroon */
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            backdrop-filter: blur(14px);
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-{% block content %}
-{% if no_dept %}
-<div class="alert alert-warning glass-panel">
-    Your account is not mapped to a department yet. Please contact the admin.
-</div>
-{% else %}
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <div>
-        <h3 class="fw-bold mb-0">HOD Command Center</h3>
-        <p class="text-muted smaller mb-0">Department: {{ dept.name }}</p>
-    </div>
-    <div class="d-flex gap-2 flex-wrap">
-        <button class="btn btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#directMentorAssignModal">
-            <i class="bi bi-person-plus me-2"></i> Assign Mentor
-        </button>
-        <button class="btn btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#trainingModal">
-            <i class="bi bi-clipboard-plus me-2"></i> Add Training
-        </button>
-        <button class="btn btn-li btn-li-primary" data-bs-toggle="modal" data-bs-target="#announcementModal">
-            <i class="bi bi-megaphone me-2"></i> Post Announcement
-        </button>
-    </div>
-</div>
+        .bottom-nav-scroll {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 4px 12px;
+        }
 
-<div class="row g-4">
-    <div class="col-lg-8">
-        <div class="card-linkedin p-4 mb-4">
-            <h5 class="fw-bold mb-3">Mentor Assignments ({{ current_year }})</h5>
-            <p class="text-muted smaller mb-0">Section-based mentor assignment has been removed. Use direct assignments below.</p>
-        </div>
+        .bottom-nav .nav-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            width: 54px;
+            height: 44px;
+            border-radius: 12px;
+            font-size: 8px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.75);
+            transition: all 0.2s ease;
+            text-decoration: none;
+            text-align: center;
+        }
 
-        <div class="card-linkedin p-4 mb-4">
-            <h5 class="fw-bold mb-3">Direct Mentor Assignments (Selected Students)</h5>
-            <form method="post" class="mb-3">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="assign_mentor_students">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-4">
-                        <label class="smaller fw-bold mb-1">Mentor</label>
-                        <select class="form-select smaller" name="mentor_id" required>
-                            <option value="">Select Mentor</option>
-                            {% for mentor in mentors %}
-                            <option value="{{ mentor.id }}">{{ mentor.full_name|default:mentor.email }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-8">
-                        <label class="smaller fw-bold mb-1">Students</label>
-                        <div class="border rounded p-2" style="max-height: 160px; overflow-y: auto;">
-                            {% for student in dept_students %}
-                            <div class="form-check smaller mb-1">
-                                <input class="form-check-input" type="checkbox" name="student_ids" value="{{ student.id }}" id="dm{{ student.id }}">
-                                <label class="form-check-label" for="dm{{ student.id }}">
-                                    {{ student.user.full_name }} ({{ student.roll_no }}){% if student.section %} · {{ student.section.name }}{% endif %}
-                                </label>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <button class="btn btn-li btn-li-primary">Assign Selected Students</button>
-                    </div>
-                </div>
-            </form>
-            <div class="table-responsive">
-                <table class="table table-sm align-middle smaller">
-                    <thead>
-                        <tr>
-                            <th>Mentor</th>
-                            <th>Students</th>
-                            <th>Academic Year</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for a in direct_assignments %}
-                        <tr>
-                            <td>{{ a.mentor.full_name|default:a.mentor.email }}</td>
-                            <td>
-                                {% for s in a.students.all %}
-                                {{ s.roll_no }}{% if not forloop.last %}, {% endif %}
-                                {% endfor %}
-                            </td>
-                            <td>{{ a.academic_year }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="3" class="text-muted">No direct mentor assignments yet.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        .bottom-nav .nav-item svg,
+        .bottom-nav .nav-item i {
+            width: 16px;
+            height: 16px;
+            margin-bottom: 2px;
+            opacity: 0.85;
+            transition: transform 0.2s ease;
+        }
+
+        .bottom-nav .nav-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        .bottom-nav .nav-item.active {
+            background: #ffffff;
+            color: var(--primary) !important;
+            font-weight: 700;
+        }
+
+        .bottom-nav .nav-item.active i,
+        .bottom-nav .nav-item.active svg {
+            color: var(--primary) !important;
+            opacity: 1;
+        }
+
+        .bottom-nav .nav-item.danger {
+            color: #fca5a5;
+        }
+
+        .bottom-nav .nav-item.danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+            color: #ffffff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="layout-wrapper">
+        <!-- ── Sidebar ── -->
+        <aside class="sidebar" id="app-sidebar">
+            <div class="sidebar-brand" style="border-bottom:1px solid var(--border); padding:1.25rem 1.5rem; display:flex; align-items:center; justify-content:center;">
+                <img src="{% static 'images/ciet_logo.svg' %}" alt="CIET Logo" style="max-width:100%; max-height:56px; object-fit:contain;">
             </div>
-        </div>
 
-        <div class="card-linkedin p-4 mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0">Training Programs</h5>
-                <button class="btn btn-sm btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#trainingModal">
-                    <i class="bi bi-plus-lg me-1"></i> New
-                </button>
-            </div>
-            {% for tp in training_programs %}
-            <div class="border-bottom pb-3 mb-3 last-child-mb-0">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="fw-bold">{{ tp.title }}</div>
-                        <div class="smaller text-muted">{{ tp.start_date }}{% if tp.end_date %} - {{ tp.end_date }}{% endif %}</div>
-                        {% if tp.venue %}<div class="smaller">{{ tp.venue }}</div>{% endif %}
-                    </div>
-                    <span class="badge {% if tp.is_active %}bg-success{% else %}bg-secondary{% endif %} smaller">
-                        {% if tp.is_active %}Active{% else %}Inactive{% endif %}
-                    </span>
-                </div>
-                {% if tp.description %}
-                <div class="smaller text-muted mt-2">{{ tp.description|truncatechars:180 }}</div>
-                {% endif %}
-                <div class="mt-2">
-                    <a href="#" class="btn btn-sm btn-link p-0 text-decoration-none smaller fw-bold"
-                        data-bs-toggle="modal" data-bs-target="#trainingModal"
-                        data-edit-mode="1"
-                        data-training-id="{{ tp.id }}"
-                        data-training-title="{{ tp.title }}"
-                        data-training-description="{{ tp.description }}"
-                        data-training-start="{{ tp.start_date }}"
-                        data-training-end="{{ tp.end_date }}"
-                        data-training-venue="{{ tp.venue }}"
-                        data-training-active="{{ tp.is_active|yesno:'1,0' }}">
-                        Edit
+            <div class="sidebar-content">
+                <div class="nav-section-label" style="padding-top:1.25rem;">Command Console</div>
+                <nav class="pb-4">
+                    <a href="#" class="nav-link active" data-tab="home">
+                        <i data-lucide="home"></i>
+                        <span>Console Home</span>
                     </a>
-                </div>
+                    <a href="#" class="nav-link" data-tab="academics">
+                        <i data-lucide="folder-open"></i>
+                        <span>Academic Documents</span>
+                    </a>
+                    <a href="#" class="nav-link" data-tab="assign-mentor">
+                        <i data-lucide="user-plus"></i>
+                        <span>Assign Mentors</span>
+                    </a>
+                    <a href="#" class="nav-link" data-tab="updates">
+                        <i data-lucide="message-square"></i>
+                        <span>Department Updates</span>
+                    </a>
+                    <a href="#" class="nav-link" data-tab="faculty">
+                        <i data-lucide="users"></i>
+                        <span>Faculty/Students</span>
+                    </a>
+                    <a href="#" class="nav-link" data-tab="profile">
+                        <i data-lucide="user"></i>
+                        <span>HOD Profile</span>
+                    </a>
+                    <a href="#" class="nav-link" data-tab="settings">
+                        <i data-lucide="settings"></i>
+                        <span>Console Settings</span>
+                    </a>
+                    
+                    <a href="{% url 'logout' %}" class="nav-link text-danger mt-auto">
+                        <i data-lucide="log-out"></i>
+                        <span>Logout Session</span>
+                    </a>
+                </nav>
             </div>
-            {% empty %}
-            <p class="text-muted smaller">No training programs yet.</p>
-            {% endfor %}
-        </div>
+        </aside>
 
-        <div class="card-linkedin p-4 mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0">Department Announcements</h5>
-                <button class="btn btn-sm btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#announcementModal">
-                    <i class="bi bi-plus-lg me-1"></i> New
-                </button>
-            </div>
-            {% for ann in announcements %}
-            <div class="border-bottom pb-3 mb-3 last-child-mb-0">
-                <div class="fw-bold">{{ ann.title }}</div>
-                <div class="smaller text-muted">{{ ann.get_category_display }} · {{ ann.created_at|date:"d M Y" }}</div>
-                <div class="smaller mt-1">{{ ann.content|truncatechars:200 }}</div>
-                {% if ann.link %}
-                <a href="{{ ann.link }}" class="smaller fw-bold text-decoration-none" target="_blank" rel="noopener">
-                    More details
-                </a>
+        <!-- ── Main Content Area ── -->
+        <main class="main-content">
+            <!-- Top Navbar -->
+            <header class="top-navbar">
+                <div class="d-flex align-items-center gap-3 flex-grow-1">
+                    <div class="ms-2">
+                        <img src="{% static 'images/ciet-logo.svg' %}" alt="CIET Logo" style="max-height: 36px; object-fit: contain;">
+                    </div>
+                </div>
+
+                <div class="navbar-actions">
+
+                    <!-- Profile Dropdown -->
+                    <div class="dropdown">
+                        <div class="profile-trigger" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
+                            <div class="d-none d-sm-block profile-name-block text-end">
+                                <p class="pname mb-0 fw-bold">HOD</p>
+                                <span class="prole text-muted small">Head of Department</span>
+                            </div>
+                            <div class="profile-avatar text-white d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; border-radius: 50%; background: rgba(var(--primary-rgb), 0.1);">
+                                <i data-lucide="user" style="width:18px;"></i>
+                            </div>
+                        </div>
+                        <ul class="dropdown-menu dropdown-menu-end mt-2 p-2" style="width:180px; border-radius:var(--radius-lg);">
+                            <li><a class="dropdown-item" href="#" data-tab-trigger="profile"><i data-lucide="user" style="width:14px; margin-right:6px;"></i> Profile</a></li>
+                            <li><hr class="dropdown-divider opacity-50 mx-2"></li>
+                            <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i data-lucide="log-out" style="width:14px; margin-right:6px;"></i> Logout Session</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-4" style="max-width: 1300px; margin: 0 auto;">
+                {% if no_dept %}
+                <div class="alert alert-warning border-0 shadow-sm p-4 text-center">
+                    <i data-lucide="alert-triangle" class="text-warning mb-2" style="width: 48px; height: 48px;"></i>
+                    <h5 class="fw-bold">Department Mapping Required</h5>
+                    <p class="text-muted mb-0">Your HOD account is not currently mapped to an academic department. Please contact the administrator.</p>
+                </div>
+                {% else %}
+
+                {% if messages %}
+                {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+                    <div class="d-flex align-items-center gap-2">
+                        <i data-lucide="info" style="width: 18px;"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
                 {% endif %}
-            </div>
-            {% empty %}
-            <p class="text-muted smaller">No announcements published yet.</p>
-            {% endfor %}
-        </div>
 
-        <div class="card-linkedin p-4">
-            <h5 class="fw-bold mb-3">Syllabus Completion Summary</h5>
-            {% for row in syllabus_summary %}
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div class="smaller fw-bold">{{ row.subject_name }} ({{ row.subject_code }})</div>
-                <span class="badge bg-primary-subtle text-primary smaller">
-                    {{ row.covered|default:0 }}/{{ row.total|default:0 }}
-                </span>
-            </div>
-            {% empty %}
-            <p class="text-muted smaller">No syllabus data found.</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="col-lg-4">
-        <div class="card-linkedin p-4 mb-4">
-            <h5 class="fw-bold mb-3">Data Forwarded to Principal</h5>
-            <div style="position: relative; height: 240px; width: 100%;">
-                <canvas id="principalChart"></canvas>
-            </div>
-            <div class="d-flex justify-content-between mt-3 smaller text-muted">
-                <span>Snapshot summary</span>
-                <span>{{ current_year }}</span>
-            </div>
-        </div>
-
-        <div class="card-linkedin p-4 mb-4">
-            <h5 class="fw-bold mb-3">Department Performance (Avg CGPA)</h5>
-            <div style="position: relative; height: 260px; width: 100%;">
-                <canvas id="batchChart"></canvas>
-            </div>
-        </div>
-
-        <div class="card-linkedin p-4 mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold mb-0">Timetables</h6>
-                <button class="btn btn-sm btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#timetableModal">
-                    Upload
-                </button>
-            </div>
-            {% for t in timetables %}
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div class="smaller">
-                    Sem {{ t.semester }} · {{ t.academic_year|default:current_year }}
-                </div>
-                <a href="{{ t.file.url }}" class="smaller fw-bold text-decoration-none">View</a>
-            </div>
-            {% empty %}
-            <p class="text-muted smaller">No timetables uploaded.</p>
-            {% endfor %}
-        </div>
-
-        <div class="card-linkedin p-4 mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold mb-0">Academic Calendars</h6>
-                <button class="btn btn-sm btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#calendarModal">
-                    Upload
-                </button>
-            </div>
-            {% for cal in calendars %}
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div class="smaller">{{ cal.title }} · Sem {{ cal.semester }}</div>
-                <a href="{{ cal.file.url }}" class="smaller fw-bold text-decoration-none" target="_blank">View</a>
-            </div>
-            {% empty %}
-            <p class="text-muted smaller">No calendar uploaded.</p>
-            {% endfor %}
-        </div>
-
-        <div class="card-linkedin p-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold mb-0">Lesson Plans</h6>
-                <button class="btn btn-sm btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#lessonPlanModal">
-                    Upload
-                </button>
-            </div>
-            {% for lp in lesson_plans %}
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div class="smaller">{{ lp.subject.code }} · {{ lp.academic_year }}</div>
-                <a href="{{ lp.file.url }}" class="smaller fw-bold text-decoration-none">View</a>
-            </div>
-            {% empty %}
-            <p class="text-muted smaller">No lesson plans uploaded.</p>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-
-{% endif %}
-{% endblock %}
-
-{% block modals %}
-{% if not no_dept %}
-<!-- MODAL: Assign Mentor (Direct Students) -->
-<div class="modal fade" id="directMentorAssignModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Assign Mentor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="assign_mentor_students">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">Mentor</label>
-                        <select name="mentor_id" class="form-select smaller" required>
-                            <option value="">Select Mentor</option>
-                            {% for mentor in mentors %}
-                            <option value="{{ mentor.id }}">{{ mentor.full_name|default:mentor.email }}</option>
-                            {% endfor %}
-                        </select>
+                <!-- ============================================ -->
+                <!-- 1. HOME TAB PANEL -->
+                <!-- ============================================ -->
+                <div id="tab-home" class="tab-panel">
+                    <!-- Minimalist Header -->
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 pb-3 border-bottom border-light">
+                        <div>
+                            <h2 class="fw-bold mb-1 text-dark" style="letter-spacing: -0.5px;">Welcome Back, <span class="text-maroon">{{ request.user.full_name|default:request.user.email }}</span></h2>
+                            <p class="text-muted mb-0">Department of {{ dept.name }} Command Console</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-3 mt-3 mt-md-0">
+                            <span class="d-flex align-items-center text-secondary small fw-medium bg-light px-3 py-2 rounded-3"><i data-lucide="calendar" style="width: 14px; margin-right: 6px;"></i> Session: {{ current_year }}</span>
+                            <span class="d-flex align-items-center text-secondary small fw-medium bg-light px-3 py-2 rounded-3"><i data-lucide="hash" style="width: 14px; margin-right: 6px;"></i> Branch: {{ dept.code }}</span>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">Students</label>
-                        <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
-                            {% for student in dept_students %}
-                            <div class="form-check smaller mb-1">
-                                <input class="form-check-input" type="checkbox" name="student_ids" value="{{ student.id }}" id="md{{ student.id }}">
-                                <label class="form-check-label" for="md{{ student.id }}">
-                                    {{ student.user.full_name }} ({{ student.roll_no }}){% if student.section %} · {{ student.section.name }}{% endif %}
-                                </label>
+
+                    <!-- Clean Quick Stats -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-12 col-md-4">
+                            <div class="card border border-light shadow-sm h-100 rounded-4">
+                                <div class="card-body p-4 d-flex align-items-center gap-3">
+                                    <div class="p-3 rounded-circle" style="background-color: #e0e7ff; color: #4338ca;">
+                                        <i data-lucide="briefcase" style="width: 24px; height: 24px;"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-muted small fw-semibold mb-0 text-uppercase tracking-wide" style="font-size: 0.7rem; letter-spacing: 0.5px;">Faculty Members</p>
+                                        <h3 class="fw-bold mb-0 text-dark">{{ faculty_list|length }}</h3>
+                                    </div>
+                                </div>
                             </div>
-                            {% endfor %}
                         </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0">
-                    <button type="submit" class="btn btn-li btn-li-primary">Assign</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL: Training Program -->
-<div class="modal fade" id="trainingModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold" id="trainingModalTitle">New Training Program</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" id="trainingAction" value="create_training">
-                <input type="hidden" name="training_id" id="trainingId">
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="smaller fw-bold mb-1">Title</label>
-                            <input type="text" name="title" id="trainingTitle" class="form-control smaller" required>
+                        <div class="col-12 col-md-4">
+                            <div class="card border border-light shadow-sm h-100 rounded-4">
+                                <div class="card-body p-4 d-flex align-items-center gap-3">
+                                    <div class="p-3 rounded-circle" style="background-color: #d1fae5; color: #047857;">
+                                        <i data-lucide="user-check" style="width: 24px; height: 24px;"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-muted small fw-semibold mb-0 text-uppercase tracking-wide" style="font-size: 0.7rem; letter-spacing: 0.5px;">Active Mentors</p>
+                                        <h3 class="fw-bold mb-0 text-dark">{{ mentors|length }}</h3>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="smaller fw-bold mb-1">Venue</label>
-                            <input type="text" name="venue" id="trainingVenue" class="form-control smaller">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="smaller fw-bold mb-1">Start Date</label>
-                            <input type="date" name="start_date" id="trainingStart" class="form-control smaller" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="smaller fw-bold mb-1">End Date</label>
-                            <input type="date" name="end_date" id="trainingEnd" class="form-control smaller">
-                        </div>
-                        <div class="col-12">
-                            <label class="smaller fw-bold mb-1">Description</label>
-                            <textarea name="description" id="trainingDescription" rows="3" class="form-control smaller"></textarea>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="is_active" id="trainingActive" checked>
-                                <label class="form-check-label smaller" for="trainingActive">Active</label>
+                        <div class="col-12 col-md-4">
+                            <div class="card border border-light shadow-sm h-100 rounded-4">
+                                <div class="card-body p-4 d-flex align-items-center gap-3">
+                                    <div class="p-3 rounded-circle" style="background-color: #fef3c7; color: #b45309;">
+                                        <i data-lucide="bookmark-check" style="width: 24px; height: 24px;"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-muted small fw-semibold mb-0 text-uppercase tracking-wide" style="font-size: 0.7rem; letter-spacing: 0.5px;">Assignments</p>
+                                        <h3 class="fw-bold mb-0 text-dark">{{ direct_assignments|length }}</h3>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer border-top-0">
-                    <button type="submit" class="btn btn-li btn-li-primary" id="trainingSubmitBtn">Create</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
-<!-- MODAL: Announcement -->
-<div class="modal fade" id="announcementModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Post Announcement</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="create_announcement">
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <label class="smaller fw-bold mb-1">Title</label>
-                            <input type="text" name="title" class="form-control smaller" required>
+                    <!-- Year-wise Student Distribution -->
+                    <div class="card border border-light shadow-sm mb-4 rounded-4 overflow-hidden">
+                        <div class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4">
+                            <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                                <i data-lucide="graduation-cap" class="text-maroon" style="width: 18px;"></i> Student Distribution
+                            </h6>
                         </div>
-                        <div class="col-md-4">
-                            <label class="smaller fw-bold mb-1">Category</label>
-                            <select name="category" class="form-select smaller">
-                                {% for val, label in announcement_categories %}
-                                <option value="{{ val }}">{{ label }}</option>
+                        <div class="card-body p-0">
+                            <div class="row g-0">
+                                {% for ys in year_wise_stats %}
+                                <div class="col-6 col-md-3 {% if not forloop.last %}border-end border-light{% endif %} {% if forloop.counter > 2 %}border-top border-light border-md-top-0{% endif %}">
+                                    <div class="p-4 text-center hover-bg-light transition-base">
+                                        <h2 class="fw-bold mb-1 text-dark">{{ ys.count }}</h2>
+                                        <p class="text-muted small mb-0 fw-medium">{{ ys.roman }} Year</p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Department Performance Reports -->
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 mt-4 gap-3">
+                        <div>
+                            <h4 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                                <i data-lucide="bar-chart-2" class="text-maroon"></i> Department Performance Reports
+                            </h4>
+                            <p class="text-muted small mb-0">Overview of academics, mentoring, and syllabus coverage</p>
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-12 col-lg-4">
+                            <div class="row g-4">
+                                <div class="col-12">
+                                    <div class="card border border-light shadow-sm rounded-4">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                                                    <i data-lucide="book-open-check" class="text-maroon" style="width: 18px;"></i> Syllabus Coverage
+                                                </h6>
+                                                <span class="badge bg-light text-secondary border">{{ principal_values.3|default:"0" }}%</span>
+                                            </div>
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar bg-maroon" role="progressbar" style="width: {{ principal_values.3|default:'0' }}%;" aria-valuenow="{{ principal_values.3|default:'0' }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                            <p class="text-muted small mt-3 mb-0">Overall department syllabus completion based on faculty logs.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="card border border-light shadow-sm rounded-4">
+                                        <div class="card-body p-4">
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                                                    <i data-lucide="users" class="text-maroon" style="width: 18px;"></i> Mentorship Coverage
+                                                </h6>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span class="text-muted small">Assigned: <span class="fw-bold text-success">{{ principal_values.1|default:"0" }}</span></span>
+                                                <span class="text-muted small">Unassigned: <span class="fw-bold text-danger">{{ principal_values.2|default:"0" }}</span></span>
+                                            </div>
+                                            <div class="progress" style="height: 8px;">
+                                                {% if principal_values.1|add:principal_values.2 > 0 %}
+                                                    {% widthratio principal_values.1 principal_values.1|add:principal_values.2 100 as assigned_pct %}
+                                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ assigned_pct }}%;" aria-valuenow="{{ assigned_pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                {% else %}
+                                                    <div class="progress-bar bg-light" role="progressbar" style="width: 100%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                                {% endif %}
+                                            </div>
+                                            <p class="text-muted small mt-3 mb-0">Ratio of students currently assigned to a faculty mentor.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-8">
+                            <div class="card border border-light shadow-sm p-4 h-100 rounded-4">
+                                <h6 class="fw-bold mb-4 text-dark d-flex align-items-center gap-2">
+                                    <i data-lucide="bar-chart-3" class="text-maroon" style="width: 18px;"></i> Average CGPA by Year
+                                </h6>
+                                <div style="position: relative; height: 260px; width: 100%;">
+                                    <canvas id="cgpaChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ============================================ -->
+                <!-- 1b. ACADEMIC DOCUMENTS & TRAINING PANEL -->
+                <!-- ============================================ -->
+                <div id="tab-academics" class="tab-panel d-none">
+                    <div class="row g-4">
+                        <!-- Academic Documents Section -->
+                        <div class="col-12">
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-3">
+                                <div>
+                                    <h4 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                                        <i data-lucide="folder-open" class="text-maroon"></i> Academic Documents & Uploads
+                                    </h4>
+                                    <p class="text-muted small mb-0">Manage lesson plans, timetables, and calendars</p>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-maroon btn-sm dropdown-toggle px-3 py-2" type="button" data-bs-toggle="dropdown">
+                                        <i data-lucide="upload" style="width: 14px; margin-right: 4px;"></i> Upload Document
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#uploadLessonPlanModal">Lesson Plan</a></li>
+                                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#uploadTimetableModal">Timetable</a></li>
+                                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#uploadCalendarModal">Academic Calendar</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3">
+                                <!-- Lesson Plans -->
+                                <div class="col-12 col-md-4">
+                                    <div class="card border border-light shadow-sm h-100 rounded-4">
+                                        <div class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <i data-lucide="book-open" class="text-maroon" style="width: 18px;"></i> Lesson Plans
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-4 pt-2" style="max-height: 300px; overflow-y: auto;">
+                                            <div class="d-flex flex-column gap-3">
+                                                {% for lp in lesson_plans %}
+                                                <div class="d-flex justify-content-between align-items-center border-bottom border-light pb-2">
+                                                    <div>
+                                                        <p class="mb-0 fw-semibold text-dark" style="font-size: 0.9rem;">{{ lp.subject.name }}</p>
+                                                        <small class="text-muted">
+                                                            {% if lp.target_year %}{{ lp.get_target_year_display }}{% endif %}
+                                                            {% if lp.target_section %} - Sec {{ lp.target_section.name }}{% endif %}
+                                                            {% if lp.target_year or lp.target_section %}<br>{% endif %}
+                                                            By: {{ lp.uploaded_by.full_name|default:lp.uploaded_by.email }}
+                                                        </small>
+                                                    </div>
+                                                    <div class="d-flex gap-1">
+                                                        {% if lp.resource_link %}
+                                                        <a href="{{ lp.resource_link }}" class="text-secondary hover-text-maroon p-1" target="_blank" title="Resource Link">
+                                                            <i data-lucide="link" style="width: 16px;"></i>
+                                                        </a>
+                                                        {% endif %}
+                                                        <a href="{{ lp.file.url }}" class="text-secondary hover-text-maroon p-1" target="_blank" title="Download Document">
+                                                            <i data-lucide="download" style="width: 16px;"></i>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                {% empty %}
+                                                <div class="text-center py-4 text-muted">
+                                                    <i data-lucide="file-x" class="opacity-25 mb-2" style="width: 24px; height: 24px;"></i>
+                                                    <p class="mb-0 small fw-medium">No lesson plans yet.</p>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Timetables -->
+                                <div class="col-12 col-md-4">
+                                    <div class="card border border-light shadow-sm h-100 rounded-4">
+                                        <div class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <i data-lucide="clock" class="text-maroon" style="width: 18px;"></i> Timetables
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-4 pt-2" style="max-height: 300px; overflow-y: auto;">
+                                            <div class="d-flex flex-column gap-3">
+                                                {% for tt in timetables %}
+                                                <div class="d-flex justify-content-between align-items-center border-bottom border-light pb-2">
+                                                    <div>
+                                                        <p class="mb-0 fw-semibold text-dark" style="font-size: 0.9rem;">
+                                                            {% if tt.target_year %}{{ tt.get_target_year_display }}{% elif tt.year_roman %}{{ tt.year_roman }} Year{% else %}All Years{% endif %}
+                                                            {% if tt.target_section %} <span class="text-maroon fw-bold" style="font-size:0.8rem;">(Sec {{ tt.target_section.name }})</span>{% endif %}
+                                                            {% if tt.semester %} <span class="text-muted fw-normal" style="font-size:0.8rem;">(Sem {{ tt.semester }})</span>{% endif %}
+                                                        </p>
+                                                        <small class="text-muted">Valid: {{ tt.valid_from|default:"-" }}</small>
+                                                    </div>
+                                                    <div class="d-flex gap-1">
+                                                        {% if tt.resource_link %}
+                                                        <a href="{{ tt.resource_link }}" class="text-secondary hover-text-maroon p-1" target="_blank" title="Resource Link">
+                                                            <i data-lucide="link" style="width: 16px;"></i>
+                                                        </a>
+                                                        {% endif %}
+                                                        <a href="{{ tt.file.url }}" class="text-secondary hover-text-maroon p-1" target="_blank" title="Download Document">
+                                                            <i data-lucide="download" style="width: 16px;"></i>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                {% empty %}
+                                                <div class="text-center py-4 text-muted">
+                                                    <i data-lucide="calendar-x" class="opacity-25 mb-2" style="width: 24px; height: 24px;"></i>
+                                                    <p class="mb-0 small fw-medium">No timetables yet.</p>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Calendars -->
+                                <div class="col-12 col-md-4">
+                                    <div class="card border border-light shadow-sm h-100 rounded-4">
+                                        <div class="card-header bg-white border-bottom-0 pt-4 pb-2 px-4">
+                                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                <i data-lucide="calendar-days" class="text-maroon" style="width: 18px;"></i> Calendars
+                                            </h6>
+                                        </div>
+                                        <div class="card-body p-4 pt-2" style="max-height: 300px; overflow-y: auto;">
+                                            <div class="d-flex flex-column gap-3">
+                                                {% for cal in calendars %}
+                                                <div class="d-flex justify-content-between align-items-center border-bottom border-light pb-2">
+                                                    <div>
+                                                        <p class="mb-0 fw-semibold text-dark text-truncate" style="font-size: 0.9rem; max-width: 150px;" title="{{ cal.title }}">{{ cal.title }}</p>
+                                                        <small class="text-muted">
+                                                            {% if cal.target_year %}{{ cal.get_target_year_display }}{% elif cal.year_roman %}{{ cal.year_roman }} Year{% else %}All Years{% endif %}
+                                                            {% if cal.target_section %} - Sec {{ cal.target_section.name }}{% endif %}
+                                                            {% if cal.semester %} (Sem {{ cal.semester }}){% endif %}
+                                                        </small>
+                                                    </div>
+                                                    <div class="d-flex gap-1">
+                                                        {% if cal.resource_link %}
+                                                        <a href="{{ cal.resource_link }}" class="text-secondary hover-text-maroon p-1" target="_blank" title="Resource Link">
+                                                            <i data-lucide="link" style="width: 16px;"></i>
+                                                        </a>
+                                                        {% endif %}
+                                                        <a href="{{ cal.file.url }}" class="text-secondary hover-text-maroon p-1" target="_blank" title="Download Document">
+                                                            <i data-lucide="download" style="width: 16px;"></i>
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                {% empty %}
+                                                <div class="text-center py-4 text-muted">
+                                                    <i data-lucide="calendar-off" class="opacity-25 mb-2" style="width: 24px; height: 24px;"></i>
+                                                    <p class="mb-0 small fw-medium">No calendars yet.</p>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Department Training Programs -->
+                        <div class="col-12 mt-5">
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                                <div>
+                                    <h4 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                                        <i data-lucide="award" class="text-maroon"></i> Training Programs
+                                    </h4>
+                                    <p class="text-muted small mb-0">Upcoming and active departmental training events</p>
+                                </div>
+                                <button class="btn btn-outline-secondary btn-sm px-3 py-2" data-bs-toggle="modal" data-bs-target="#createTrainingModal">
+                                    <i data-lucide="plus" style="width: 14px; margin-right: 4px;"></i> Create Training
+                                </button>
+                            </div>
+
+                            <div class="row g-4">
+                                {% for prog in training_programs %}
+                                <div class="col-12 col-md-6 col-lg-4">
+                                    <div class="card border border-light shadow-sm h-100 rounded-4">
+                                        <div class="card-body p-4 d-flex flex-column">
+                                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                                <h5 class="fw-bold mb-0 text-dark" style="max-width: 75%; line-height: 1.3;" title="{{ prog.title }}">{{ prog.title }}</h5>
+                                                {% if prog.is_active %}
+                                                <span class="badge bg-light text-success border border-success border-opacity-25 px-2 py-1 rounded-pill" style="font-size: 0.7rem; font-weight: 600;">Active</span>
+                                                {% else %}
+                                                <span class="badge bg-light text-secondary border px-2 py-1 rounded-pill" style="font-size: 0.7rem; font-weight: 600;">Closed</span>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            <p class="text-muted small mb-4" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ prog.description|default:"No description provided." }}</p>
+                                            
+                                            <div class="d-flex flex-column gap-2 mt-auto pt-3 border-top border-light">
+                                                <div class="d-flex align-items-center gap-2 text-secondary small fw-medium">
+                                                    <i data-lucide="map-pin" class="text-maroon opacity-75" style="width: 16px; height: 16px;"></i> 
+                                                    {{ prog.venue|default:"Online" }}
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2 text-secondary small fw-medium">
+                                                    <i data-lucide="calendar" class="text-maroon opacity-75" style="width: 16px; height: 16px;"></i> 
+                                                    {{ prog.start_date|default:"TBD" }}{% if prog.end_date %} to {{ prog.end_date }}{% endif %}
+                                                </div>
+                                                {% if prog.registration_link %}
+                                                <div class="mt-2">
+                                                    <a href="{{ prog.registration_link }}" target="_blank" class="btn btn-sm btn-outline-maroon w-100 fw-medium">Register for Training</a>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="col-12">
+                                    <div class="card border border-light shadow-sm text-center py-5 rounded-4">
+                                        <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                                            <i data-lucide="monitor-off" class="text-muted opacity-25 mb-3" style="width: 36px; height: 36px;"></i>
+                                            <h5 class="fw-bold text-dark mb-2">No Training Programs</h5>
+                                            <p class="text-muted mb-4 small" style="max-width: 400px; margin: 0 auto;">There are no training programs currently scheduled.</p>
+                                            <button class="btn btn-maroon px-4 btn-sm" data-bs-toggle="modal" data-bs-target="#createTrainingModal">
+                                                <i data-lucide="plus" style="width: 14px; margin-right: 4px;"></i> Create First Training
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================ -->
+                <!-- 2. ASSIGN MENTOR TAB PANEL -->
+                <!-- ============================================ -->
+                <div id="tab-assign-mentor" class="tab-panel d-none">
+                    <div class="row g-4">
+                        <!-- Current Mentor Assignments (Left side on desktop) -->
+                        <div class="col-12 col-lg-8 order-2 order-lg-1">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body p-4">
+                                    <h4 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                                        <i data-lucide="clipboard-list" class="text-maroon"></i> Current Mentor Assignments ({{ current_year }})
+                                    </h4>
+                                    <p class="text-muted small mb-4">Active student monitoring mappings assigned for the current academic session.</p>
+
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Mentor</th>
+                                                    <th>Assigned Students</th>
+                                                    <th>Year</th>
+                                                    <th class="text-center">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for a in direct_assignments %}
+                                                <tr>
+                                                    <td class="fw-semibold">{{ a.mentor.full_name|default:a.mentor.email }}</td>
+                                                    <td>
+                                                        <div class="d-flex flex-wrap gap-1" style="max-height: 80px; overflow-y: auto; max-width: 250px;">
+                                                            {% for s in a.students.all %}
+                                                            <span class="badge bg-light text-dark border">{{ s.user.full_name|default:s.roll_no }} ({{ s.roll_no }})</span>
+                                                            {% endfor %}
+                                                        </div>
+                                                    </td>
+                                                    <td>{{ a.academic_year }}</td>
+                                                    <td class="text-center">
+                                                        <form method="post" style="display:inline;">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="action" value="remove_mentor_assignment">
+                                                            <input type="hidden" name="assignment_id" value="{{ a.id }}">
+                                                            <button type="submit" class="btn btn-icon danger text-danger border-0 bg-transparent" onclick="return confirm('Remove this assignment mapping?')">
+                                                                <i data-lucide="trash-2" style="width: 16px;"></i>
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="4" class="text-muted text-center py-4">No mentor assignments created yet.</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Assign Mentor Form (Right side on desktop) -->
+                        <div class="col-12 col-lg-4 order-1 order-lg-2">
+                            <div class="card border-0 shadow-sm h-100 bg-light">
+                                <div class="card-body p-4">
+                                    <h5 class="fw-bold mb-3 d-flex align-items-center gap-2 text-dark">
+                                        <i data-lucide="user-plus" class="text-maroon"></i> Assign Mentors
+                                    </h5>
+                                    <style>
+                                        .custom-minimal-tabs { gap: 1rem; align-items: center; border: none !important; }
+                                        .custom-minimal-tabs .nav-link { padding: 0 !important; font-weight: 600; color: #64748b; background: transparent !important; border: none !important; transition: color 0.2s; position: relative; }
+                                        .custom-minimal-tabs .nav-link::before, .custom-minimal-tabs .nav-link::after { display: none !important; }
+                                        .custom-minimal-tabs .nav-link:hover { color: #0f172a !important; background: transparent !important; transform: none !important; }
+                                        .custom-minimal-tabs .nav-link.active { color: #800000 !important; background: transparent !important; transform: none !important; }
+                                        .custom-minimal-tabs .divider { width: 1px; height: 16px; background-color: #cbd5e1; }
+                                    </style>
+                                    <ul class="nav custom-minimal-tabs mb-4" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-assign-halves" type="button" role="tab">Split Class</button>
+                                        </li>
+                                        <li class="d-flex align-items-center">
+                                            <div class="divider"></div>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-assign-manual" type="button" role="tab">Manual Assign</button>
+                                        </li>
+                                    </ul>
+
+                                    <div class="tab-content">
+                                        <!-- Split Class Tab -->
+                                        <div class="tab-pane fade show active" id="tab-assign-halves" role="tabpanel">
+                                            <p class="text-muted small mb-4" style="line-height: 1.4;">Select Batch & Section to split class, then assign mentors.</p>
+                                            
+                                            <form method="post" id="assign-mentor-halves-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="assign_mentor_halves">
+
+                                        <!-- Step 1: Batch & Section Selection -->
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-12">
+                                                <label for="id_batch" class="form-label fw-bold small text-secondary">1. Batch</label>
+                                                <select name="batch" id="id_batch" class="form-select form-select-sm" required>
+                                                    <option value="">-- Choose Year/Batch --</option>
+                                                    {% for b in batches %}
+                                                    <option value="{{ b }}">{% for key, val in batch_labels.items %}{% if key == b %}{{ val }}{% endif %}{% endfor %}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-12">
+                                                <label for="id_section" class="form-label fw-bold small text-secondary">2. Section</label>
+                                                <select name="section_id" id="id_section" class="form-select form-select-sm" required>
+                                                    <option value="">-- Choose Section --</option>
+                                                    {% for sec in sections %}
+                                                    <option value="{{ sec.id }}">{{ sec.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <!-- Step 2: Dynamic Split Preview -->
+                                        <div id="split-preview-card" class="mb-3 d-none">
+                                            <div class="p-3 border rounded bg-white shadow-sm">
+                                                <h6 class="fw-bold mb-2 text-maroon d-flex align-items-center gap-1" style="font-size: 0.85rem;">
+                                                    <i data-lucide="split" style="width: 14px; height: 14px;"></i> Class Split Preview
+                                                </h6>
+                                                <p class="text-muted mb-2" style="font-size: 0.8rem;">Total Students: <span id="split-total-count" class="fw-bold text-dark">0</span></p>
+                                                
+                                                <div class="row g-2">
+                                                    <div class="col-6">
+                                                        <div class="p-2 border rounded bg-light" style="font-size: 0.75rem;">
+                                                            <strong class="text-success d-block mb-1">1st Half</strong>
+                                                            <span class="text-secondary d-block text-truncate" id="split-first-half-range" title="">-</span>
+                                                            <small class="text-muted fw-medium" id="split-first-half-count">Count: 0</small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="p-2 border rounded bg-light" style="font-size: 0.75rem;">
+                                                            <strong class="text-primary d-block mb-1">2nd Half</strong>
+                                                            <span class="text-secondary d-block text-truncate" id="split-second-half-range" title="">-</span>
+                                                            <small class="text-muted fw-medium" id="split-second-half-count">Count: 0</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Step 3: Mentor Selection -->
+                                        <div class="mb-3">
+                                            <label for="mentor_1_id" class="form-label fw-bold small text-secondary">3. Mentor for 1st Half</label>
+                                            <select name="mentor_1_id" id="mentor_1_id" class="form-select form-select-sm mentor-selector" required disabled>
+                                                <option value="">-- Select Batch &amp; Section First --</option>
+                                                {% for mentor in mentors %}
+                                                <option value="{{ mentor.id }}" data-mentor-id="{{ mentor.id }}">{{ mentor.full_name|default:mentor.email }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label for="mentor_2_id" class="form-label fw-bold small text-secondary">4. Mentor for 2nd Half</label>
+                                            <select name="mentor_2_id" id="mentor_2_id" class="form-select form-select-sm mentor-selector" required disabled>
+                                                <option value="">-- Select Batch &amp; Section First --</option>
+                                                {% for mentor in mentors %}
+                                                <option value="{{ mentor.id }}" data-mentor-id="{{ mentor.id }}">{{ mentor.full_name|default:mentor.email }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <button type="submit" id="submit-assignment-btn" class="btn btn-maroon btn-sm w-100 py-2 fw-medium" disabled>Save Assignments</button>
+                                            </form>
+                                        </div>
+
+                                        <!-- Manual Assign Tab -->
+                                        <div class="tab-pane fade" id="tab-assign-manual" role="tabpanel">
+                                            <p class="text-muted small mb-4" style="line-height: 1.4;">Manually select students to assign to a specific mentor.</p>
+                                            <form method="post" id="assign-mentor-manual-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="assign_mentor_manual">
+                                                
+                                                <div class="mb-3">
+                                                    <label for="manual_mentor_id" class="form-label fw-bold small text-secondary">Select Mentor</label>
+                                                    <select name="mentor_id" id="manual_mentor_id" class="form-select form-select-sm" required>
+                                                        <option value="">-- Choose Mentor --</option>
+                                                        {% for mentor in mentors %}
+                                                        <option value="{{ mentor.id }}">{{ mentor.full_name|default:mentor.email }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+
+                                                <div class="mb-4">
+                                                    <label for="manual_student_ids" class="form-label fw-bold small text-secondary">Select Students</label>
+                                                    <select name="student_ids" id="manual_student_ids" class="form-select form-select-sm" multiple required style="height: 250px;">
+                                                        {% regroup dept_students|dictsort:"section.name"|dictsort:"batch" by batch as batch_list %}
+                                                        {% for batch_group in batch_list %}
+                                                            {% regroup batch_group.list by section.name as section_list %}
+                                                            {% for sec_group in section_list %}
+                                                                <optgroup label="Batch {{ batch_group.grouper }} - Section {{ sec_group.grouper|default:'N/A' }}">
+                                                                    {% for student in sec_group.list|dictsort:"roll_no" %}
+                                                                    <option value="{{ student.id }}">{{ student.roll_no }} - {{ student.user.full_name|default:student.user.email }}</option>
+                                                                    {% endfor %}
+                                                                </optgroup>
+                                                            {% endfor %}
+                                                        {% endfor %}
+                                                    </select>
+                                                    <div class="form-text small mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple students.</div>
+                                                </div>
+
+                                                <button type="submit" class="btn btn-maroon btn-sm w-100 py-2 fw-medium">
+                                                    <i data-lucide="check-circle" style="width: 14px; margin-right: 4px; vertical-align: middle;"></i> Assign Selected Students
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================ -->
+                <!-- 3. DEPARTMENT UPDATES (ANNOUNCEMENTS) PANEL -->
+                <!-- ============================================ -->
+                <div id="tab-updates" class="tab-panel d-none">
+                    <div class="row g-4">
+                        <div class="col-12 col-lg-5">
+                            <div class="card border border-light shadow-sm rounded-4">
+                                <div class="card-body p-4">
+                                    <h4 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                                        <i data-lucide="message-square" class="text-maroon"></i> Post Department Announcement
+                                    </h4>
+                                    <p class="text-muted small mb-4">Send global or specific academic updates directly to the college news feed.</p>
+                                    
+                                    <form method="post">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="create_announcement">
+
+                                        <div class="mb-3">
+                                            <label for="id_title" class="form-label fw-bold small text-secondary">Update Title</label>
+                                            <input type="text" name="title" id="id_title" class="form-control form-control-sm" placeholder="E.g., Mid-Term Examination Schedule" required>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label for="id_content" class="form-label fw-bold small text-secondary">Message Content</label>
+                                            <textarea name="content" id="id_content" class="form-control form-control-sm" rows="4" placeholder="Draft the update details here..." required></textarea>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label for="id_resource_link" class="form-label fw-bold small text-secondary">Resource Link (Optional)</label>
+                                            <input type="url" name="resource_link" id="id_resource_link" class="form-control form-control-sm" placeholder="E.g., https://example.com/syllabus">
+                                        </div>
+
+                                        <button type="submit" class="btn btn-maroon btn-sm w-100 py-2 fw-medium">Broadcast Update to {{ dept.code }}</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-7">
+                            <div class="card border border-light shadow-sm rounded-4 h-100">
+                                <div class="card-body p-4">
+                                    <h4 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                                        <i data-lucide="history" class="text-maroon"></i> Announcement History
+                                    </h4>
+                                    <p class="text-muted small mb-4">Recent announcements broadcast to faculty and students.</p>
+
+                                    <div class="d-flex flex-column gap-3" style="max-height: 520px; overflow-y: auto;">
+                                        {% for ann in announcements %}
+                                        <div class="pb-3 border-bottom border-light position-relative">
+                                            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                                                <span class="badge bg-light text-maroon border border-maroon border-opacity-25 px-2 py-1 rounded-pill" style="font-size: 0.7rem; font-weight: 600;">Target: {{ ann.target_department.code }} Students</span>
+                                                <span class="ms-md-auto text-muted small"><i data-lucide="calendar" class="d-inline" style="width: 12px; margin-bottom: 2px;"></i> {{ ann.created_at|date:"M d, Y" }}</span>
+                                            </div>
+                                            <h6 class="fw-bold mb-1 text-dark">{{ ann.title }}</h6>
+                                            <p class="text-secondary small mb-2" style="white-space: pre-wrap;">{{ ann.message }}</p>
+                                            {% if ann.resource_link %}
+                                            <a href="{{ ann.resource_link }}" target="_blank" class="text-secondary hover-text-maroon small fw-medium mt-1 d-inline-flex align-items-center gap-1"><i data-lucide="external-link" class="d-inline" style="width: 14px;"></i> View Resource</a>
+                                            {% endif %}
+                                        </div>
+                                        {% empty %}
+                                        <div class="py-5 text-center text-muted">
+                                            <i data-lucide="inbox" class="mb-3 opacity-25" style="width: 36px; height: 36px;"></i>
+                                            <p class="mb-0 small fw-medium">No updates posted yet.</p>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================ -->
+                <!-- 4. FACULTY & SYLLABUS PANEL -->
+                <!-- ============================================ -->
+                <div id="tab-faculty" class="tab-panel d-none">
+                    <div class="row g-4">
+                        <!-- Faculty & Student Directory Card -->
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                                        <div>
+                                            <h4 class="fw-bold mb-1 d-flex align-items-center gap-2" id="directory-title">
+                                                <i data-lucide="users" class="text-maroon"></i> Faculty Directory
+                                            </h4>
+                                            <p class="text-muted small mb-0" id="directory-subtitle">View faculty members in the department and their teaching assignments.</p>
+                                        </div>
+                                        <div>
+                                            <div class="btn-group border rounded-3 p-1 bg-light shadow-sm directory-switcher" role="group" aria-label="Directory Switcher">
+                                                <input type="radio" class="btn-check" name="directory-toggle" id="btn-toggle-faculty" autocomplete="off" checked>
+                                                <label class="btn btn-sm btn-light border-0 rounded-2 px-3 fw-semibold" for="btn-toggle-faculty">Faculty</label>
+                                                
+                                                <input type="radio" class="btn-check" name="directory-toggle" id="btn-toggle-students" autocomplete="off">
+                                                <label class="btn btn-sm btn-light border-0 rounded-2 px-3 fw-semibold" for="btn-toggle-students">Students</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Faculty List Table -->
+                                    <div class="table-responsive" id="faculty-directory-container">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead>
+                                                <tr class="table-light">
+                                                    <th>Faculty Member</th>
+                                                    <th>Role</th>
+                                                    <th class="text-center">Subjects Taught</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for member in faculty_list %}
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <div class="avatar-stub rounded-circle bg-maroon text-white d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                                                {{ member.email|slice:":2"|upper }}
+                                                            </div>
+                                                            <div>
+                                                                <h6 class="fw-semibold mb-0" style="font-size: 0.875rem;">{{ member.full_name|default:member.email }}</h6>
+                                                                <small class="text-muted" style="font-size: 0.72rem;">{{ member.email }}</small>
+                                                                {% if member.role == 'Mentor' and member.mentoring_assignment_display %}
+                                                                <div class="mt-1">
+                                                                    <span class="badge bg-success-subtle text-success" style="font-size: 0.68rem; padding: 2px 6px;">Mentoring: {{ member.mentoring_assignment_display }}</span>
+                                                                </div>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-secondary-subtle text-secondary">{{ member.role }}</span>
+                                                    </td>
+                                                    <td class="text-center fw-bold">{{ member.subject_count }}</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="3" class="text-center text-muted py-3">No faculty members found in this department.</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <!-- Student List Table -->
+                                    <div class="table-responsive d-none" id="student-directory-container">
+                                        <!-- Year Filter Pills -->
+                                        <div class="d-flex flex-wrap gap-2 mb-3" id="student-year-filter">
+                                            <button type="button" class="btn btn-sm btn-maroon px-3 year-filter-btn active" data-filter-year="all">All Years</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary px-3 year-filter-btn" data-filter-year="1">I Year</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary px-3 year-filter-btn" data-filter-year="2">II Year</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary px-3 year-filter-btn" data-filter-year="3">III Year</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary px-3 year-filter-btn" data-filter-year="4">IV Year</button>
+                                        </div>
+                                        <table class="table table-hover align-middle mb-0" id="student-directory-table">
+                                            <thead>
+                                                <tr class="table-light">
+                                                    <th>Student Details</th>
+                                                    <th>Roll Number</th>
+                                                    <th>Year</th>
+                                                    <th>Section</th>
+                                                    <th class="text-center">CGPA</th>
+                                                    <th>Assigned Mentor</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for s in dept_students %}
+                                                <tr data-year="{{ s.year_num }}">
+                                                    <td>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <div class="avatar-stub rounded-circle bg-maroon text-white d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                                                {{ s.user.full_name|slice:":2"|upper|default:s.roll_no|slice:":2"|upper }}
+                                                            </div>
+                                                            <div>
+                                                                <h6 class="fw-semibold mb-0" style="font-size: 0.875rem;">{{ s.user.full_name|default:s.user.email }}</h6>
+                                                                <small class="text-muted" style="font-size: 0.72rem;">{{ s.user.email }}</small>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="fw-semibold text-secondary">{{ s.roll_no }}</td>
+                                                    <td><span class="badge bg-maroon bg-opacity-10 text-maroon">{{ s.year_roman }} Year</span></td>
+                                                    <td>
+                                                        {% if s.section %}
+                                                        <span class="badge bg-info-subtle text-info">{{ s.section.name }}</span>
+                                                        {% else %}
+                                                        <span class="text-muted small">N/A</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-center fw-bold">
+                                                        <span class="text-maroon">{{ s.cgpa|default:"0.0" }}</span>
+                                                    </td>
+                                                    <td>
+                                                        {% if s.assigned_mentor == "Unassigned" %}
+                                                        <span class="badge bg-warning-subtle text-warning">Unassigned</span>
+                                                        {% else %}
+                                                        <span class="badge bg-success-subtle text-success">{{ s.assigned_mentor }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="6" class="text-center text-muted py-3">No students found in this department.</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================ -->
+                <!-- 5. HOD PROFILE TAB PANEL -->
+                <!-- ============================================ -->
+                <div id="tab-profile" class="tab-panel d-none">
+                    <!-- Profile Overview -->
+                    <div class="card mb-4 profile-overview-card border" style="background:#fcfafb; border-radius:10px; border-color:#eadee2 !important; box-shadow: none;">
+                        <div class="card-body p-4 p-lg-5 position-relative">
+                            <button id="edit-profile-btn" class="btn-icon position-absolute" style="top:24px; right:24px; background:white; border:1px solid #eee; color:var(--text-muted); z-index:2; box-shadow: none;" data-bs-toggle="modal" data-bs-target="#editProfileModal" title="Edit Profile">
+                                <i data-lucide="edit-2" style="width:16px;"></i>
+                            </button>
+
+                            <!-- TOP ROW: Avatar + Title -->
+                            <div class="d-flex flex-column flex-md-row gap-4 align-items-md-center">
+                                <!-- Avatar -->
+                                <div class="position-relative flex-shrink-0" style="width:110px;">
+                                    <div id="profile-avatar-wrapper" style="width:110px; height:110px; border-radius:50%; background:#a71a3e; display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:pointer;">
+                                        <span id="profile-initials-display" style="color:white; font-size:2.5rem; font-weight:bold;">CV</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Name & Subtitle -->
+                                <div class="ms-md-2">
+                                    <h3 class="fw-bold mb-1" id="profile-display-name" style="color:#1a1a1a; letter-spacing:-0.5px;">{{ request.user.full_name|default:request.user.email }}</h3>
+                                    <p class="mb-1" style="color:#a71a3e; font-weight:600; font-size:0.9rem;" id="profile-display-designation">Head of Department</p>
+                                    <p class="mb-0" style="color:#666; font-size:0.85rem;" id="profile-display-department">{{ dept.name }}</p>
+                                </div>
+                            </div>
+
+                            <hr style="border-color:#eadee2; margin:30px 0;">
+
+                            <!-- Professional Details -->
+                            <div>
+                                <h6 style="font-size:0.75rem; font-weight:800; color:#666; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:16px;">Professional Details</h6>
+                                <div class="row g-3">
+                                    <!-- Designation -->
+                                    <div class="col-md-6 col-lg-4">
+                                        <div style="background:white; border-radius:14px; padding:16px; display:flex; align-items:center; gap:16px; border:1px solid #f0e8eb;">
+                                            <div style="width:36px; height:36px; border-radius:8px; background:#f5f3f7; display:flex; align-items:center; justify-content:center;">
+                                                <i data-lucide="briefcase" style="color:#6b21a8; width:18px;"></i>
+                                            </div>
+                                            <div>
+                                                <p style="font-size:0.65rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:2px;">Designation</p>
+                                                <p class="mb-0 fw-bold" style="color:#1a1a1a; font-size:0.95rem;" id="profile-display-designation-box">Head of Department</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Department -->
+                                    <div class="col-md-6 col-lg-4">
+                                        <div style="background:white; border-radius:14px; padding:16px; display:flex; align-items:center; gap:16px; border:1px solid #f0e8eb;">
+                                            <div style="width:36px; height:36px; border-radius:8px; background:#f0f7fd; display:flex; align-items:center; justify-content:center;">
+                                                <i data-lucide="building-2" style="color:#2563eb; width:18px;"></i>
+                                            </div>
+                                            <div>
+                                                <p style="font-size:0.65rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:2px;">Department</p>
+                                                <p class="mb-0 fw-bold text-truncate" style="color:#1a1a1a; font-size:0.95rem; max-width: 160px;" id="profile-display-department-box">{{ dept.code }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Email Address -->
+                                    <div class="col-md-6 col-lg-4">
+                                        <div style="background:white; border-radius:14px; padding:16px; display:flex; align-items:center; gap:16px; border:1px solid #f0e8eb;">
+                                            <div style="width:36px; height:36px; border-radius:8px; background:#fef4f2; display:flex; align-items:center; justify-content:center;">
+                                                <i data-lucide="mail" style="color:#c2410c; width:18px;"></i>
+                                            </div>
+                                            <div style="max-width:calc(100% - 52px);">
+                                                <p style="font-size:0.65rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:2px;">Email Address</p>
+                                                <p class="mb-0 fw-bold text-truncate" style="color:#1a1a1a; font-size:0.95rem; width:100%; display:block;" id="profile-display-email" title="{{ request.user.email }}">{{ request.user.email }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================ -->
+                <!-- 6. SYSTEM SETTINGS PANEL -->
+                <!-- ============================================ -->
+                <div id="tab-settings" class="tab-panel d-none">
+                    <div class="section-card border-0 shadow-sm p-4">
+                        <div class="section-card-header">
+                            <div class="icon-wrap primary">
+                                <i data-lucide="settings"></i>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-0">System Preferences</h5>
+                                <p class="text-muted small mb-0">Manage UI theme preferences, notifications, and security options.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-4 pt-2">
+                            <div class="col-12 col-md-6">
+                                <h6 class="fw-bold text-maroon mb-3">Notifications</h6>
+                                <p class="text-muted small mb-3">Preferences for real-time notifications and alerts.</p>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="settings-notif-email" checked>
+                                    <label class="form-check-label fw-medium" for="settings-notif-email">Email notifications for assignments</label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="settings-notif-realtime" checked>
+                                    <label class="form-check-label fw-medium" for="settings-notif-realtime">Real-time alerts inside Dashboard</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% endif %}
+            </div><!-- /page-content -->
+        </main>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- ── MODALS DEFINITIONS ── -->
+    <!-- ============================================ -->
+
+    <!-- Upload Lesson Plan Modal -->
+    <div class="modal fade" id="uploadLessonPlanModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Upload Subject Lesson Plan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="upload_lesson_plan">
+                        <div class="mb-3">
+                            <label for="lp_subject" class="form-label">Select Subject</label>
+                            <select name="subject_id" id="lp_subject" class="form-select" required>
+                                <option value="">-- Choose Subject --</option>
+                                {% for s in subjects %}
+                                <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-12">
-                            <label class="smaller fw-bold mb-1">Content</label>
-                            <textarea name="content" rows="4" class="form-control smaller" required></textarea>
+                        <div class="mb-3">
+                            <label for="lp_year" class="form-label">Academic Year</label>
+                            <input type="text" name="academic_year" id="lp_year" class="form-control" value="{{ current_year }}" required>
                         </div>
-                        <div class="col-12">
-                            <label class="smaller fw-bold mb-1">Link (optional)</label>
-                            <input type="url" name="link" class="form-control smaller">
-                        </div>
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="is_active" checked>
-                                <label class="form-check-label smaller">Publish immediately</label>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Target Year (Optional)</label>
+                                <select name="target_year" class="form-select">
+                                    <option value="">-- All Years --</option>
+                                    <option value="1">I Year</option>
+                                    <option value="2">II Year</option>
+                                    <option value="3">III Year</option>
+                                    <option value="4">IV Year</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Target Section (Optional)</label>
+                                <select name="target_section" class="form-select">
+                                    <option value="">-- All Sections --</option>
+                                    {% for sec in sections %}
+                                    <option value="{{ sec.id }}">{{ sec.name }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                         </div>
-                    </div>
+                        <div class="mb-3">
+                            <label for="lp_link" class="form-label">Resource Link (Optional)</label>
+                            <input type="url" name="resource_link" id="lp_link" class="form-control" placeholder="E.g., Google Drive Link">
+                        </div>
+                        <div class="mb-3">
+                            <label for="lp_file" class="form-label">Choose File</label>
+                            <input type="file" name="file" id="lp_file" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-maroon w-100">Upload Plan</button>
+                    </form>
                 </div>
-                <div class="modal-footer border-top-0">
-                    <button type="submit" class="btn btn-li btn-li-primary">Post</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL: Timetable Upload -->
-<div class="modal fade" id="timetableModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Upload Timetable</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="post" enctype="multipart/form-data">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="upload_timetable">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">Semester</label>
-                        <input type="number" name="semester" class="form-control smaller" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">Valid From</label>
-                        <input type="date" name="valid_from" class="form-control smaller" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">File</label>
-                        <input type="file" name="file" class="form-control smaller" required>
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0">
-                    <button type="submit" class="btn btn-li btn-li-primary">Upload</button>
-                </div>
-            </form>
         </div>
     </div>
-</div>
 
-<!-- MODAL: Academic Calendar Upload -->
-<div class="modal fade" id="calendarModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Upload Academic Calendar</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <!-- Upload Timetable Modal -->
+    <div class="modal fade" id="uploadTimetableModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Upload Class Timetable</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="upload_timetable">
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Target Year (Optional)</label>
+                                <select name="target_year" class="form-select">
+                                    <option value="">-- All Years --</option>
+                                    <option value="1">I Year</option>
+                                    <option value="2">II Year</option>
+                                    <option value="3">III Year</option>
+                                    <option value="4">IV Year</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Target Section (Optional)</label>
+                                <select name="target_section" class="form-select">
+                                    <option value="">-- All Sections --</option>
+                                    {% for sec in sections %}
+                                    <option value="{{ sec.id }}">{{ sec.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tt_semester" class="form-label">Target Semester (Optional)</label>
+                            <input type="number" name="semester" id="tt_semester" class="form-control" placeholder="E.g., 5" min="1" max="8">
+                        </div>
+                        <div class="mb-3">
+                            <label for="tt_valid" class="form-label">Valid From</label>
+                            <input type="date" name="valid_from" id="tt_valid" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tt_link" class="form-label">Resource Link (Optional)</label>
+                            <input type="url" name="resource_link" id="tt_link" class="form-control" placeholder="E.g., Google Drive Link">
+                        </div>
+                        <div class="mb-3">
+                            <label for="tt_file" class="form-label">Choose File</label>
+                            <input type="file" name="file" id="tt_file" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-maroon w-100">Upload Timetable</button>
+                    </form>
+                </div>
             </div>
-            <form method="post" enctype="multipart/form-data">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="upload_calendar">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">Title</label>
-                        <input type="text" name="title" class="form-control smaller" required placeholder="e.g., Odd Semester 2023-24">
-                    </div>
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">Semester</label>
-                        <input type="number" name="semester" class="form-control smaller" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">File (PDF/Image)</label>
-                        <input type="file" name="file" class="form-control smaller" required>
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0">
-                    <button type="submit" class="btn btn-li btn-li-primary">Upload</button>
-                </div>
-            </form>
         </div>
     </div>
-</div>
 
-<!-- MODAL: Lesson Plan Upload -->
-<div class="modal fade" id="lessonPlanModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">Upload Lesson Plan</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <!-- Upload Academic Calendar Modal -->
+    <div class="modal fade" id="uploadCalendarModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Upload Academic Calendar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="upload_calendar">
+                        <div class="mb-3">
+                            <label for="cal_title" class="form-label">Calendar Title</label>
+                            <input type="text" name="title" id="cal_title" class="form-control" placeholder="E.g., B.Tech 3rd Year Calendar" required>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Target Year (Optional)</label>
+                                <select name="target_year" class="form-select">
+                                    <option value="">-- All Years --</option>
+                                    <option value="1">I Year</option>
+                                    <option value="2">II Year</option>
+                                    <option value="3">III Year</option>
+                                    <option value="4">IV Year</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Target Section (Optional)</label>
+                                <select name="target_section" class="form-select">
+                                    <option value="">-- All Sections --</option>
+                                    {% for sec in sections %}
+                                    <option value="{{ sec.id }}">{{ sec.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="cal_sem" class="form-label">Semester (Optional)</label>
+                            <input type="number" name="semester" id="cal_sem" class="form-control" placeholder="E.g., 5" min="1" max="8">
+                        </div>
+                        <div class="mb-3">
+                            <label for="cal_link" class="form-label">Resource Link (Optional)</label>
+                            <input type="url" name="resource_link" id="cal_link" class="form-control" placeholder="E.g., Google Drive Link">
+                        </div>
+                        <div class="mb-3">
+                            <label for="cal_file" class="form-label">Choose File</label>
+                            <input type="file" name="file" id="cal_file" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-maroon w-100">Upload Calendar</button>
+                    </form>
+                </div>
             </div>
-            <form method="post" enctype="multipart/form-data">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="upload_lesson_plan">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">Subject</label>
-                        <select name="subject_id" class="form-select smaller" required>
-                            <option value="">Select Subject</option>
-                            {% for subj in subjects %}
-                            <option value="{{ subj.id }}">{{ subj.name }} ({{ subj.code }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">Academic Year</label>
-                        <input type="text" name="academic_year" class="form-control smaller" value="{{ current_year }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="smaller fw-bold mb-1">File</label>
-                        <input type="file" name="file" class="form-control smaller" required>
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0">
-                    <button type="submit" class="btn btn-li btn-li-primary">Upload</button>
-                </div>
-            </form>
         </div>
     </div>
-</div>
-{% endif %}
-{% endblock %}
 
-{% block extra_js %}
-{% if not no_dept %}
-{{ perf_labels|json_script:"perf-labels" }}
-{{ perf_values|json_script:"perf-values" }}
-{{ principal_labels|json_script:"principal-labels" }}
-{{ principal_values|json_script:"principal-values" }}
-<script>
-    const labelsData = JSON.parse(document.getElementById('perf-labels').textContent);
-    const valuesData = JSON.parse(document.getElementById('perf-values').textContent);
-    const principalLabels = JSON.parse(document.getElementById('principal-labels').textContent);
-    const principalValues = JSON.parse(document.getElementById('principal-values').textContent);
+    <!-- Create Training Modal -->
+    <div class="modal fade" id="createTrainingModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Training Program</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create_training">
+                        <div class="mb-3">
+                            <label for="trn_title" class="form-label">Program Title</label>
+                            <input type="text" name="title" id="trn_title" class="form-control" placeholder="E.g., Advanced Java Training" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="trn_desc" class="form-label">Description</label>
+                            <textarea name="description" id="trn_desc" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label for="trn_start" class="form-label">Start Date</label>
+                                <input type="date" name="start_date" id="trn_start" class="form-control" required>
+                            </div>
+                            <div class="col-6">
+                                <label for="trn_end" class="form-label">End Date</label>
+                                <input type="date" name="end_date" id="trn_end" class="form-control">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="trn_venue" class="form-label">Venue</label>
+                            <input type="text" name="venue" id="trn_venue" class="form-control" placeholder="E.g., Seminar Hall-1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="trn_link" class="form-label">Registration Link (Optional)</label>
+                            <input type="url" name="registration_link" id="trn_link" class="form-control" placeholder="E.g., Google Form Link">
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" name="is_active" id="trn_active" class="form-check-input" checked>
+                            <label for="trn_active" class="form-check-label">Mark as Active</label>
+                        </div>
+                        <button type="submit" class="btn btn-maroon w-100">Schedule Program</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    const ctx = document.getElementById('batchChart');
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labelsData,
-                datasets: [{
-                    label: 'Avg CGPA',
-                    data: valuesData,
-                    backgroundColor: 'rgba(10, 102, 194, 0.7)',
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { min: 0, max: 10 } }
+    <!-- Edit Profile Modal -->
+    <div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Edit HOD Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editProfileForm">
+                        <div class="mb-3 text-center">
+                            <div class="position-relative d-inline-block mx-auto">
+                                <div id="modal-avatar-preview" style="width: 90px; height: 90px; border-radius: 20px; background: #a71a3e; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #eee;">
+                                    <span style="color: white; font-size: 2rem; font-weight: bold;">HOD</span>
+                                </div>
+                                <label for="prof-edit-picture" class="btn btn-sm btn-light border position-absolute shadow-sm p-1" style="bottom: -5px; right: -5px; border-radius: 50%;">
+                                    <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
+                                </label>
+                                <input type="file" id="prof-edit-picture" accept="image/*" style="display: none;">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Full Name</label>
+                            <input type="text" id="prof-edit-name" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Email Address</label>
+                            <input type="email" id="prof-edit-email" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Designation</label>
+                                <input type="text" id="prof-edit-designation" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Department</label>
+                                <input type="text" id="prof-edit-department" class="form-control form-control-sm" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-maroon w-100 py-2">Save Profile Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ BOTTOM NAVIGATION ═══ -->
+    <nav class="bottom-nav" aria-label="HOD console navigation">
+        <div class="bottom-nav-scroll">
+            <a href="#" class="nav-item active" data-tab="home" title="Console Home">
+                <i data-lucide="home"></i>
+                <span>Home</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="academics" title="Academic Documents">
+                <i data-lucide="folder-open"></i>
+                <span>Docs</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="assign-mentor" title="Assign Mentors">
+                <i data-lucide="user-plus"></i>
+                <span>Mentors</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="updates" title="Department Updates">
+                <i data-lucide="message-square"></i>
+                <span>Updates</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="faculty" title="Faculty/Students">
+                <i data-lucide="users"></i>
+                <span>Faculty/Std</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="profile" title="HOD Profile">
+                <i data-lucide="user"></i>
+                <span>Profile</span>
+            </a>
+            <a href="#" class="nav-item" data-tab="settings" title="Console Settings">
+                <i data-lucide="settings"></i>
+                <span>Settings</span>
+            </a>
+            <a href="{% url 'logout' %}" class="nav-item danger" title="Logout Session">
+                <i data-lucide="log-out"></i>
+                <span>Exit</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Bootstrap scripts and initialization -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'faculty-hub/js/scripts.js' %}"></script>
+    
+    <script>
+        lucide.createIcons();
+
+        // ── Tab Switching Logic ────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            // ── Mentor Assignment Class Splitting & Validation Logic ──
+            const deptStudents = [
+                {% for student in dept_students %}
+                {
+                    id: "{{ student.id }}",
+                    name: "{{ student.user.full_name|default:student.user.email|escapejs }}",
+                    roll_no: "{{ student.roll_no|escapejs }}",
+                    batch: "{{ student.batch|escapejs }}",
+                    section_id: "{{ student.section.id|default:'' }}"
+                },
+                {% endfor %}
+            ];
+
+            const assignedMentorsInfo = {
+                {% for m_id, info in assigned_mentors_info.items %}
+                "{{ m_id }}": {
+                    batch: "{{ info.batch|escapejs }}",
+                    section: "{{ info.section|escapejs }}",
+                    half: "{{ info.half|escapejs }}"
+                },
+                {% endfor %}
+            };
+
+            const batchSelect = document.getElementById('id_batch');
+            const sectionSelect = document.getElementById('id_section');
+            const splitPreviewCard = document.getElementById('split-preview-card');
+            const splitTotalCount = document.getElementById('split-total-count');
+            const splitFirstHalfRange = document.getElementById('split-first-half-range');
+            const splitFirstHalfCount = document.getElementById('split-first-half-count');
+            const splitSecondHalfRange = document.getElementById('split-second-half-range');
+            const splitSecondHalfCount = document.getElementById('split-second-half-count');
+            const mentorSelectors = document.querySelectorAll('.mentor-selector');
+            const submitBtn = document.getElementById('submit-assignment-btn');
+
+            function updateMentorOptions(selectedBatch, selectedSectionId) {
+                let sectionOpt = sectionSelect.querySelector(`option[value="${selectedSectionId}"]`);
+                let sectionName = sectionOpt ? sectionOpt.textContent.trim() : "";
+
+                mentorSelectors.forEach(select => {
+                    select.disabled = false;
+                    const options = select.querySelectorAll('option');
+                    options[0].textContent = select.id === 'mentor_1_id' ? '-- Choose 1st Half Mentor --' : '-- Choose 2nd Half Mentor --';
+                    
+                    options.forEach((opt, idx) => {
+                        if (idx === 0) return;
+                        const mentorId = opt.getAttribute('data-mentor-id');
+                        const info = assignedMentorsInfo[mentorId];
+                        
+                        if (info) {
+                            if (info.batch === selectedBatch && info.section === sectionName) {
+                                opt.disabled = false;
+                                opt.textContent = `${opt.text.split(' [')[0]} [Currently Assigned: ${info.half}]`;
+                            } else {
+                                opt.disabled = true;
+                                opt.textContent = `${opt.text.split(' [')[0]} [Already Assigned: ${info.batch} - Sec ${info.section} - ${info.half}]`;
+                            }
+                        } else {
+                            opt.disabled = false;
+                            opt.textContent = opt.text.split(' [')[0];
+                        }
+                    });
+                });
+            }
+
+            function handleClassSelectionChange() {
+                const batch = batchSelect.value;
+                const sectionId = sectionSelect.value;
+
+                if (!batch || !sectionId) {
+                    splitPreviewCard.classList.add('d-none');
+                    mentorSelectors.forEach(select => {
+                        select.disabled = true;
+                        select.value = "";
+                        select.querySelector('option').textContent = '-- Select Batch & Section First --';
+                    });
+                    submitBtn.disabled = true;
+                    return;
+                }
+
+                const filtered = deptStudents.filter(s => s.batch === batch && s.section_id === sectionId);
+                filtered.sort((a, b) => a.roll_no.localeCompare(b.roll_no));
+
+                const total = filtered.length;
+                splitTotalCount.textContent = total;
+
+                if (total > 0) {
+                    const mid = Math.floor((total + 1) / 2);
+                    const firstHalf = filtered.slice(0, mid);
+                    const secondHalf = filtered.slice(mid);
+
+                    const firstRange = firstHalf.length > 0 ? `${firstHalf[0].roll_no} - ${firstHalf[firstHalf.length - 1].roll_no}` : 'N/A';
+                    const secondRange = secondHalf.length > 0 ? `${secondHalf[0].roll_no} - ${secondHalf[secondHalf.length - 1].roll_no}` : 'N/A';
+
+                    splitFirstHalfRange.textContent = firstRange;
+                    splitFirstHalfRange.title = firstHalf.map(s => `${s.name} (${s.roll_no})`).join(', ');
+                    splitFirstHalfCount.textContent = `Count: ${firstHalf.length}`;
+
+                    splitSecondHalfRange.textContent = secondRange;
+                    splitSecondHalfRange.title = secondHalf.map(s => `${s.name} (${s.roll_no})`).join(', ');
+                    splitSecondHalfCount.textContent = `Count: ${secondHalf.length}`;
+
+                    splitPreviewCard.classList.remove('d-none');
+                    updateMentorOptions(batch, sectionId);
+                    submitBtn.disabled = false;
+                } else {
+                    splitFirstHalfRange.textContent = 'No students found';
+                    splitFirstHalfCount.textContent = 'Count: 0';
+                    splitSecondHalfRange.textContent = 'No students found';
+                    splitSecondHalfCount.textContent = 'Count: 0';
+                    splitPreviewCard.classList.remove('d-none');
+                    mentorSelectors.forEach(select => {
+                        select.disabled = true;
+                        select.value = "";
+                    });
+                    submitBtn.disabled = true;
+                }
+            }
+
+            if (batchSelect && sectionSelect) {
+                batchSelect.addEventListener('change', handleClassSelectionChange);
+                sectionSelect.addEventListener('change', handleClassSelectionChange);
+            }
+
+            const navLinks = document.querySelectorAll('.sidebar .nav-link[data-tab], .bottom-nav .nav-item[data-tab]');
+            const dropdownLinks = document.querySelectorAll('[data-tab-trigger]');
+            const panels = document.querySelectorAll('.tab-panel');
+
+            function activateTab(tabId) {
+                // Remove active class from all links
+                navLinks.forEach(link => {
+                    if (link.getAttribute('data-tab') === tabId) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+
+                // Show target panel with fade-in effect
+                panels.forEach(panel => {
+                    if (panel.id === `tab-${tabId}`) {
+                        panel.classList.remove('d-none');
+                    } else {
+                        panel.classList.add('d-none');
+                    }
+                });
+
+                // Save state
+                localStorage.setItem('hodActiveTab', tabId);
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetTab = link.getAttribute('data-tab');
+                    activateTab(targetTab);
+                });
+            });
+
+            dropdownLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetTab = link.getAttribute('data-tab-trigger');
+                    activateTab(targetTab);
+                });
+            });
+
+            // Restore state
+            const savedTab = localStorage.getItem('hodActiveTab');
+            if (savedTab) {
+                activateTab(savedTab);
+            }
+
+            // Directory Switcher Toggle
+            const btnFaculty = document.getElementById('btn-toggle-faculty');
+            const btnStudents = document.getElementById('btn-toggle-students');
+            const facultyContainer = document.getElementById('faculty-directory-container');
+            const studentContainer = document.getElementById('student-directory-container');
+            const directoryTitle = document.getElementById('directory-title');
+            const directorySubtitle = document.getElementById('directory-subtitle');
+
+            if (btnFaculty && btnStudents && facultyContainer && studentContainer) {
+                btnFaculty.addEventListener('change', () => {
+                    if (btnFaculty.checked) {
+                        facultyContainer.classList.remove('d-none');
+                        studentContainer.classList.add('d-none');
+                        if (directoryTitle) {
+                            directoryTitle.innerHTML = '<i data-lucide="users" class="text-maroon"></i> Faculty Directory';
+                        }
+                        if (directorySubtitle) {
+                            directorySubtitle.textContent = 'View faculty members in the department and their teaching assignments.';
+                        }
+                        lucide.createIcons();
+                    }
+                });
+
+                btnStudents.addEventListener('change', () => {
+                    if (btnStudents.checked) {
+                        facultyContainer.classList.add('d-none');
+                        studentContainer.classList.remove('d-none');
+                        if (directoryTitle) {
+                            directoryTitle.innerHTML = '<i data-lucide="users" class="text-maroon"></i> Student Directory';
+                        }
+                        if (directorySubtitle) {
+                            directorySubtitle.textContent = 'View registered students in the department, their performance, and assigned mentors.';
+                        }
+                        lucide.createIcons();
+                    }
+                });
+            }
+
+            // Student Directory Year Filtering
+            const yearFilterBtns = document.querySelectorAll('.year-filter-btn');
+            const studentRows = document.querySelectorAll('#student-directory-table tbody tr');
+
+            if (yearFilterBtns.length > 0 && studentRows.length > 0) {
+                yearFilterBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        // Update active state
+                        yearFilterBtns.forEach(b => {
+                            b.classList.remove('btn-maroon', 'active');
+                            b.classList.add('btn-outline-secondary');
+                        });
+                        e.target.classList.remove('btn-outline-secondary');
+                        e.target.classList.add('btn-maroon', 'active');
+
+                        const filterYear = e.target.getAttribute('data-filter-year');
+
+                        studentRows.forEach(row => {
+                            if (filterYear === 'all') {
+                                row.classList.remove('d-none');
+                            } else {
+                                if (row.getAttribute('data-year') === filterYear) {
+                                    row.classList.remove('d-none');
+                                } else {
+                                    row.classList.add('d-none');
+                                }
+                            }
+                        });
+                    });
+                });
             }
         });
-    }
 
-    const principalCtx = document.getElementById('principalChart');
-    if (principalCtx) {
-        new Chart(principalCtx, {
-            type: 'bar',
-            data: {
-                labels: principalLabels,
-                datasets: [{
-                    label: 'Dept Summary',
-                    data: principalValues,
-                    backgroundColor: ['#0a66c2', '#22c55e', '#f59e0b', '#8b5cf6'],
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }
+        // ── Chart.js Initialization ───────────────────────────────
+        try {
+            const perfLabels = {{ perf_labels|safe }};
+            const perfValues = {{ perf_values|safe }};
+            
+            const ctxCgpa = document.getElementById('cgpaChart').getContext('2d');
+            new Chart(ctxCgpa, {
+                type: 'bar',
+                data: {
+                    labels: perfLabels,
+                    datasets: [{
+                        label: 'Average CGPA',
+                        data: perfValues,
+                        backgroundColor: 'rgba(175, 12, 62, 0.7)',
+                        borderColor: '#AF0C3E',
+                        borderWidth: 1.5,
+                        borderRadius: 8,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10,
+                            ticks: {
+                                color: '#64748b'
+                            },
+                            grid: {
+                                color: '#f1f5f9'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#64748b'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('Error initializing charts:', err);
+        }
+
+        // ── Profile Logic (Persistent LocalStorage) ────────────────
+        const DEFAULT_PROFILE = {
+            name: "{{ request.user.full_name|default:request.user.email|escapejs }}",
+            email: "{{ request.user.email|escapejs }}",
+            designation: "Head of Department",
+            department: "{{ dept.name|escapejs }} ({{ dept.code|escapejs }})",
+            experience: "12 Years",
+            qualification: "Ph.D. in Engineering"
+        };
+
+        function getInitials(name) {
+            const parts = name.trim().split(' ').filter(Boolean);
+            if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+            if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+            return "HD";
+        }
+
+        function loadProfile() {
+            let saved = localStorage.getItem('hodProfile');
+            let profile = saved ? JSON.parse(saved) : DEFAULT_PROFILE;
+            
+            // Update UI elements
+            if(document.getElementById('profile-display-name')) document.getElementById('profile-display-name').textContent = profile.name;
+            if(document.getElementById('profile-welcome-name')) document.getElementById('profile-welcome-name').textContent = profile.name;
+            if(document.getElementById('profile-display-email')) document.getElementById('profile-display-email').textContent = profile.email;
+            if(document.getElementById('profile-display-email')) document.getElementById('profile-display-email').title = profile.email;
+            if(document.getElementById('profile-display-designation')) document.getElementById('profile-display-designation').textContent = profile.designation;
+            if(document.getElementById('profile-display-designation-box')) document.getElementById('profile-display-designation-box').textContent = profile.designation;
+            if(document.getElementById('profile-display-department')) document.getElementById('profile-display-department').textContent = profile.department;
+            if(document.getElementById('profile-display-department-box')) document.getElementById('profile-display-department-box').textContent = profile.department;
+            if(document.getElementById('profile-display-experience')) document.getElementById('profile-display-experience').textContent = profile.experience;
+            if(document.getElementById('profile-display-qualification')) document.getElementById('profile-display-qualification').textContent = profile.qualification;
+            if(document.getElementById('profile-initials-display')) document.getElementById('profile-initials-display').textContent = getInitials(profile.name);
+
+            // Update Top Right Navbar Profile dropdown
+            document.querySelectorAll('.pname').forEach(el => el.textContent = profile.name);
+            document.querySelectorAll('.prole').forEach(el => el.textContent = profile.designation);
+            document.querySelectorAll('.profile-user-block small').forEach(el => el.textContent = profile.email);
+            document.querySelectorAll('.profile-user-block .fw-bold').forEach(el => el.textContent = profile.name);
+            
+            const avatarWrapper = document.getElementById('profile-avatar-wrapper');
+            if (avatarWrapper) {
+                if (profile.picture) {
+                    avatarWrapper.innerHTML = `<img src="${profile.picture}" style="width:100%; height:100%; object-fit:cover;" alt="Profile Picture">`;
+                } else {
+                    avatarWrapper.innerHTML = `<span id="profile-initials-display" style="color:white; font-size:2.5rem; font-weight:bold;">${getInitials(profile.name)}</span>`;
+                }
             }
-        });
-    }
 
-    const trainingModal = document.getElementById('trainingModal');
-    if (trainingModal) {
-        trainingModal.addEventListener('show.bs.modal', function (event) {
-            const button = event.relatedTarget;
-            const editMode = button?.getAttribute('data-edit-mode') === '1';
+            document.querySelectorAll('.profile-avatar').forEach(el => {
+                if (profile.picture) {
+                    el.innerHTML = `<img src="${profile.picture}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" alt="Profile">`;
+                    el.style.background = 'transparent';
+                } else {
+                    el.innerHTML = `<span style="font-weight:700; color:var(--primary); font-size:0.85rem;">${getInitials(profile.name)}</span>`;
+                    el.style.background = 'rgba(var(--primary-rgb), 0.1)';
+                }
+            });
 
-            document.getElementById('trainingAction').value = editMode ? 'update_training' : 'create_training';
-            document.getElementById('trainingModalTitle').textContent = editMode ? 'Edit Training Program' : 'New Training Program';
-            document.getElementById('trainingSubmitBtn').textContent = editMode ? 'Update' : 'Create';
+            lucide.createIcons();
+        }
 
-            if (editMode) {
-                document.getElementById('trainingId').value = button.getAttribute('data-training-id') || '';
-                document.getElementById('trainingTitle').value = button.getAttribute('data-training-title') || '';
-                document.getElementById('trainingDescription').value = button.getAttribute('data-training-description') || '';
-                document.getElementById('trainingStart').value = button.getAttribute('data-training-start') || '';
-                document.getElementById('trainingEnd').value = button.getAttribute('data-training-end') || '';
-                document.getElementById('trainingVenue').value = button.getAttribute('data-training-venue') || '';
-                document.getElementById('trainingActive').checked = button.getAttribute('data-training-active') === '1';
-            } else {
-                document.getElementById('trainingId').value = '';
-                document.getElementById('trainingTitle').value = '';
-                document.getElementById('trainingDescription').value = '';
-                document.getElementById('trainingStart').value = '';
-                document.getElementById('trainingEnd').value = '';
-                document.getElementById('trainingVenue').value = '';
-                document.getElementById('trainingActive').checked = true;
-            }
-        });
-    }
-</script>
-{% endif %}
-{% endblock %}
+        // Setup Edit Profile Modal Event Listeners
+        const editProfileModalEl = document.getElementById('editProfileModal');
+        if(editProfileModalEl) {
+            editProfileModalEl.addEventListener('show.bs.modal', function () {
+                let saved = localStorage.getItem('hodProfile');
+                let profile = saved ? JSON.parse(saved) : DEFAULT_PROFILE;
+                document.getElementById('prof-edit-name').value = profile.name;
+                document.getElementById('prof-edit-email').value = profile.email;
+                document.getElementById('prof-edit-designation').value = profile.designation;
+                document.getElementById('prof-edit-department').value = profile.department;
+                if (document.getElementById('prof-edit-experience')) document.getElementById('prof-edit-experience').value = profile.experience;
+                if (document.getElementById('prof-edit-qualification')) document.getElementById('prof-edit-qualification').value = profile.qualification;
+            });
+        }
+
+        const editProfileForm = document.getElementById('editProfileForm');
+        if(editProfileForm) {
+            editProfileForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                
+                const fileInput = document.getElementById('prof-edit-picture');
+                let saved = localStorage.getItem('hodProfile');
+                let existingProfile = saved ? JSON.parse(saved) : DEFAULT_PROFILE;
+
+                const saveProfileData = (pictureData) => {
+                    const newProfile = {
+                        name: document.getElementById('prof-edit-name').value,
+                        email: document.getElementById('prof-edit-email').value,
+                        designation: document.getElementById('prof-edit-designation').value,
+                        department: document.getElementById('prof-edit-department').value,
+                        experience: existingProfile.experience || "12 Years",
+                        qualification: existingProfile.qualification || "Ph.D. in Engineering",
+                        picture: pictureData
+                    };
+                    localStorage.setItem('hodProfile', JSON.stringify(newProfile));
+                    const modal = bootstrap.Modal.getInstance(editProfileModalEl);
+                    if(modal) modal.hide();
+                    loadProfile();
+                };
+
+                if (fileInput && fileInput.files.length > 0) {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 250;
+                            const MAX_HEIGHT = 250;
+                            let width = img.width;
+                            let height = img.height;
+
+                            if (width > height) {
+                              if (width > MAX_WIDTH) {
+                                height *= MAX_WIDTH / width;
+                                width = MAX_WIDTH;
+                              }
+                            } else {
+                              if (height > MAX_HEIGHT) {
+                                width *= MAX_HEIGHT / height;
+                                height = MAX_HEIGHT;
+                              }
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext("2d");
+                            ctx.drawImage(img, 0, 0, width, height);
+                            saveProfileData(canvas.toDataURL("image/jpeg", 0.7));
+                        }
+                        img.src = evt.target.result;
+                    };
+                    reader.readAsDataURL(fileInput.files[0]);
+                } else {
+                    saveProfileData(existingProfile.picture || null);
+                }
+            });
+        }
+
+
+
+        loadProfile();
+    </script>
+</body>
+</html>

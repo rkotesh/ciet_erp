@@ -398,6 +398,7 @@ a { text-decoration: none; color: inherit; }
   padding-left: 0.75rem;
   margin-left: 0.25rem;
   border-left: 1px solid var(--border);
+  cursor: pointer !important;
 }
 
 .profile-avatar {
