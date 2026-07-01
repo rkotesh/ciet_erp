@@ -16,6 +16,27 @@ LOCKOUT_SECONDS = 300  # 5 minutes
 LOGIN_ROLES = ['Director', 'Examcell', 'HOD', 'Mentor', 'Faculty', 'Student', 'Parent']
 
 
+def get_role_redirect(request, user, role=None):
+    role = role or getattr(user, 'role', '')
+    if role == 'Student':
+        if request.session.get('is_parent_login'):
+            return 'parent-portal'
+        return 'student-portal'
+    if role == 'Examcell':
+        return 'student-verification-queue'
+    if role == 'Director':
+        return '/admin/'
+    if role == 'HOD':
+        return 'hod-dashboard'
+    if role == 'Mentor':
+        return 'mentor-dashboard'
+    if role == 'Faculty':
+        return 'faculty-dashboard'
+    if role == 'Parent':
+        return 'parent-portal'
+    return 'dashboard'
+
+
 def get_client_ip(request):
     xff = request.META.get('HTTP_X_FORWARDED_FOR')
     if xff:
@@ -34,7 +55,7 @@ class LoginView(View):
 
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated:
-            return redirect('dashboard')
+            return redirect(get_role_redirect(request, request.user))
         return render(request, 'login.html', {})
 
     def post(self, request, *args, **kwargs):
@@ -70,6 +91,7 @@ class LoginView(View):
 
         # ── Look up user ──
         user = None
+        student_profile = None
         if role == 'Examcell':
             if identifier.lower() != settings.EXAMCELL_LOGIN_EMAIL.lower():
                 cache.set(cache_key, attempts + 1, LOCKOUT_SECONDS)
@@ -90,6 +112,7 @@ class LoginView(View):
             try:
                 profile = StudentProfile.objects.select_related('user').get(roll_no__iexact=identifier)
                 user = profile.user
+                student_profile = profile
             except StudentProfile.DoesNotExist:
                 pass
 
@@ -122,6 +145,14 @@ class LoginView(View):
         # Check password policy (real credentials only)
         if role == 'Examcell':
             password_ok = password == settings.EXAMCELL_LOGIN_PASSWORD
+        elif role in ['Student', 'Parent'] or user.role == 'Student':
+            if student_profile is None:
+                student_profile = getattr(user, 'student_profile', None)
+            roll_password_ok = bool(
+                student_profile and
+                password.upper() == str(student_profile.roll_no).strip().upper()
+            )
+            password_ok = user.check_password(password) or roll_password_ok
         else:
             password_ok = user.check_password(password)
 
@@ -195,10 +226,7 @@ class VerifyOTPView(View):
                     del request.session['pending_user_role']
                 
                 login(request, user)
-                # Route students directly to their portal
-                if user.role == 'Student':
-                    return redirect('student-portal')
-                return redirect('dashboard')
+                return redirect(get_role_redirect(request, user, role))
             else:
                 form.add_error('otp', 'Invalid or expired OTP code.')
         

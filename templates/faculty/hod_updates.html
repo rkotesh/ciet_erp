@@ -1,0 +1,79 @@
+{% extends 'faculty/base_portal.html' %}
+{% load static %}
+
+{% block portal_tab_title %}HOD Updates{% endblock %}
+
+{% block portal_content %}
+<div class="flex-between" style="margin-bottom:24px;">
+  <div>
+    <h1 class="section-title">HOD Department Updates</h1>
+    <p class="section-sub">Latest circulars, guidelines, and announcements from the Head of Department.</p>
+  </div>
+</div>
+
+<style>
+  .border-left-high { border-left: 5px solid var(--primary) !important; }
+  .border-left-medium { border-left: 5px solid var(--muted) !important; }
+</style>
+
+<!-- Updates Stream -->
+<div style="display:flex;flex-direction:column;gap:16px;" class="motion-rise delay-1">
+  {% for update in faculty_hub_data.hodUpdates %}
+  <div class="card portal-panel {% if update.priority == 'high' %}border-left-high{% else %}border-left-medium{% endif %}" style="padding:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+      <div>
+        <span class="tag {% if update.priority == 'high' %}tag-primary{% else %}tag-blue{% endif %}" style="font-size:10px;">
+          {{ update.priority|upper }} PRIORITY
+        </span>
+        <h3 style="font-size:15px;font-weight:800;color:var(--text);margin-top:6px;margin-bottom:4px;">{{ update.title }}</h3>
+        <span style="font-size:11px;color:var(--muted);">Published on: {{ update.date }}</span>
+      </div>
+      <button class="btn-primary" style="font-size:12px;padding:6px 14px;" data-bs-toggle="modal" data-bs-target="#updateModal-{{ update.id }}">
+        Read Message
+      </button>
+    </div>
+    
+    <p class="text-truncate" style="font-size:13px;color:var(--muted);margin-top:12px;margin-bottom:0;max-width:90%;">
+      {{ update.content }}
+    </p>
+  </div>
+
+  <!-- Detail Modal for HOD Update -->
+  <div class="modal fade" id="updateModal-{{ update.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Department Announcement</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <span class="tag {% if update.priority == 'high' %}tag-primary{% else %}tag-blue{% endif %}" style="font-size:10px;margin-bottom:6px;">
+              {{ update.priority|upper }} PRIORITY
+            </span>
+            <h4 style="font-size:16px;font-weight:800;color:var(--text);margin:0;">{{ update.title }}</h4>
+            <span style="font-size:11px;color:var(--muted);">Date: {{ update.date }}</span>
+          </div>
+
+          <p style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-line;margin:0;">
+            {{ update.content }}
+          </p>
+
+          <div style="padding:12px;background:var(--primary-light);border-left:4px solid var(--primary);border-radius:6px;font-size:12px;color:var(--text);margin-top:8px;">
+            <strong>Sender Identity:</strong> Department exam cell / Head of Department (HOD)
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-primary" data-bs-dismiss="modal">Acknowledge</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="card" style="padding:48px;text-align:center;">
+    <div style="font-size:14px;font-weight:600;color:var(--muted);">No updates posted yet.</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;">Circulars and bulletins from the HOD will appear here.</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
