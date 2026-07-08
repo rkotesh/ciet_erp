@@ -8,11 +8,15 @@ from django.views.generic import TemplateView
 from django.utils.timezone import now
 from django.db.models import Count, Avg, Q, Sum
 from django.http import HttpResponse, JsonResponse
+<<<<<<< Updated upstream
 <<<<<<< HEAD
 from django.contrib import messages
 =======
 from typing import cast
 >>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
+=======
+from django.contrib import messages
+>>>>>>> Stashed changes
 
 from apps.accounts.models import User
 from apps.academics.models import Department, Section, Subject, Marks, Attendance
@@ -134,12 +138,18 @@ class FacultyHubTemplateView(RoleRequiredMixin, TemplateView):
         return context
 
 
+<<<<<<< Updated upstream
 <<<<<<< HEAD
 ROMAN_YEARS = {1: 'I', 2: 'II', 3: 'III', 4: 'IV'}
 
 
 =======
 >>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
+=======
+ROMAN_YEARS = {1: 'I', 2: 'II', 3: 'III', 4: 'IV'}
+
+
+>>>>>>> Stashed changes
 def _student_year_from_batch(batch):
     try:
         start_year = int(str(batch).split('-')[0])
@@ -148,7 +158,10 @@ def _student_year_from_batch(batch):
         return 1
 
 
+<<<<<<< Updated upstream
 <<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
 def _batch_display_label(batch):
     """Convert raw batch string to human-readable year label, e.g. 'I Year (2025-2029)'."""
     yr = _student_year_from_batch(batch)
@@ -441,6 +454,8 @@ class HODDashboardView(RoleRequiredMixin, View):
         if not dept:
             dept = request.user.departments.first()
         if not dept:
+            dept = request.user.departments.first()
+        if not dept:
             return render(request, 'faculty/hod_dashboard.html', {'no_dept': True})
 
         # ── Faculty in dept ──
@@ -674,6 +689,8 @@ class HODDashboardView(RoleRequiredMixin, View):
         user = cast(User, request.user)
         action = request.POST.get('action')
         dept = Department.objects.filter(hod=user).first()
+        if not dept:
+            dept = request.user.departments.first()
         if not dept:
             dept = request.user.departments.first()
         if not dept:
