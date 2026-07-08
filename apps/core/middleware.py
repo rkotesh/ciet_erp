@@ -17,52 +17,6 @@ class EnsureCsrfCookieMiddleware:
         return self.get_response(request)
 
 
-class DisableRightClickMiddleware:
-    SCRIPT_MARKER = b'no-context-menu-guard'
-    SCRIPT = b"""
-<script id="no-context-menu-guard">
-(function () {
-  'use strict';
-  if (window.__CIET_NO_CONTEXT_MENU__) return;
-  window.__CIET_NO_CONTEXT_MENU__ = true;
-
-  document.addEventListener('contextmenu', function (event) {
-    event.preventDefault();
-    alert('Sorry ! Right Click No Access.');
-  }, true);
-})();
-</script>
-"""
-
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        response = self.get_response(request)
-        content_type = response.get('Content-Type', '')
-
-        if (
-            response.status_code == 200
-            and 'text/html' in content_type
-            and not getattr(response, 'streaming', False)
-            and hasattr(response, 'content')
-        ):
-            content = response.content
-            lower_content = content.lower()
-            body_index = lower_content.rfind(b'</body>')
-
-            if (
-                body_index != -1
-                and self.SCRIPT_MARKER not in content
-                and b'no_context_menu.js' not in content
-            ):
-                response.content = content[:body_index] + self.SCRIPT + content[body_index:]
-                if response.has_header('Content-Length'):
-                    response['Content-Length'] = str(len(response.content))
-
-        return response
-
-
 class SiteThemeMiddleware:
     STYLE_MARKER = b'site-theme-css'
     SCRIPT_MARKER = b'site-theme-js'

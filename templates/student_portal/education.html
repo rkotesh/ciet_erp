@@ -9,13 +9,13 @@
     <h1 class="section-title">Academic Journey</h1>
     <p class="section-sub">Your educational background — from schooling to your current degree.</p>
   </div>
-  <button class="btn-primary" data-bs-toggle="modal" data-bs-target="#addEducationModal">+ Add Educational Details</button>
+  <button type="button" class="btn-primary add-edu-btn" data-action="open-education-modal">+ Add Educational Details</button>
 </div>
 
 {% if education %}
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px;">
   {% for e in education %}
-  <div class="card edu-card" style="padding:24px;border-radius:12px;position:relative;">
+  <div class="card edu-card portal-education-card" style="padding:24px;border-radius:12px;position:relative;">
     
     <!-- DISPLAY COMPONENT -->
     <div id="display-{{ e.edu_type }}" style="display:block;">
@@ -29,12 +29,12 @@
       </div>
 
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
-        <div class="edu-inst" style="font-size:15px;font-weight:700;color:#334155;line-height:1.4;">{{ e.institution }}</div>
+        <div class="edu-inst" style="font-size:15px;font-weight:700;color:var(--muted);line-height:1.4;">{{ e.institution }}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
-          <span class="tag" style="background:#f1f5f9;color:#475569;border:none;">📅 {{ e.year_of_passing }}</span>
-          <span class="tag" style="background:#f1f5f9;color:#475569;border:none;">🏛️ {{ e.board_university }}</span>
+          <span class="tag tag-cyan">Year {{ e.year_of_passing }}</span>
+          <span class="tag tag-blue">{{ e.board_university }}</span>
         </div>
-        <div style="font-size:14px;font-weight:800;color:var(--primary);margin-top:8px;">🎯 Score/Rank: {{ e.score }} {{ e.score_type }}</div>
+        <div style="font-size:14px;font-weight:800;color:var(--primary);margin-top:8px;">Score / Rank: {{ e.score }} {{ e.get_score_type_display }}</div>
       </div>
       
       <div style="display:flex;gap:12px;margin-top:20px;padding-top:16px;border-top:1px dashed var(--border);">
@@ -82,8 +82,8 @@
         <div class="df-group">
           <label class="df-label">Score Type</label>
           <select name="score_type" class="df-input" required>
-            <option value="CGPA" {% if e.score_type == 'CGPA' %}selected{% endif %}>CGPA</option>
-            <option value="Percentage" {% if e.score_type == 'Percentage' %}selected{% endif %}>Percentage</option>
+            <option value="GPA" {% if e.score_type == 'GPA' %}selected{% endif %}>GPA / CGPA</option>
+            <option value="%" {% if e.score_type == '%' %}selected{% endif %}>Percentage</option>
             <option value="Rank" {% if e.score_type == 'Rank' %}selected{% endif %}>Rank (EAMCET/ECET)</option>
           </select>
         </div>
@@ -108,9 +108,9 @@
 
 
 <!-- Add Education Modal -->
-<div class="modal fade" id="addEducationModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="addEducationModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.1);">
+    <div class="modal-content portal-form-modal" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.1);">
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="save">
@@ -125,13 +125,14 @@
           <div class="df-group">
             <label class="df-label">Education Type *</label>
             <select name="edu_type" class="df-input" required>
+              {% if available_edu_types %}
               <option value="" disabled selected>Select education type...</option>
-              {% for edu_type_key, edu_type_label in edu_types %}
-                <!-- Only show option if the student hasn't already added it -->
-                {% if edu_type_key not in existing_edu_types %}
-                  <option value="{{ edu_type_key }}">{{ edu_type_label }}</option>
-                {% endif %}
+              {% for edu_type_key, edu_type_label in available_edu_types %}
+                <option value="{{ edu_type_key }}">{{ edu_type_label }}</option>
               {% endfor %}
+              {% else %}
+              <option value="" disabled selected>All education types are already added</option>
+              {% endif %}
             </select>
           </div>
 
@@ -159,8 +160,8 @@
             <div class="df-group">
               <label class="df-label">Score Type</label>
               <select name="score_type" class="df-input" required>
-                <option value="CGPA">CGPA</option>
-                <option value="Percentage">Percentage</option>
+                <option value="GPA">GPA / CGPA</option>
+                <option value="%">Percentage</option>
                 <option value="Rank">Rank (EAMCET/ECET)</option>
               </select>
             </div>
@@ -169,11 +170,54 @@
         </div>
         <div style="padding:24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:12px;background:#f8fafc;">
           <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn-primary">Save Details</button>
+          <button type="submit" class="btn-primary" {% if not available_edu_types %}disabled title="Edit an existing education card instead"{% endif %}>Save Details</button>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const addBtn = document.querySelector('[data-action="open-education-modal"]');
+  const modalEl = document.getElementById('addEducationModal');
+  if (!addBtn || !modalEl) return;
+
+  addBtn.addEventListener('click', function(event) {
+    const hasBootstrapModal = window.bootstrap && window.bootstrap.Modal;
+    if (hasBootstrapModal) {
+      event.preventDefault();
+      document.querySelectorAll('.modal-backdrop').forEach(function(backdrop) {
+        backdrop.remove();
+      });
+      window.bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: false }).show();
+      return;
+    }
+
+    event.preventDefault();
+    modalEl.classList.add('show');
+    modalEl.style.display = 'block';
+    modalEl.removeAttribute('aria-hidden');
+    modalEl.setAttribute('aria-modal', 'true');
+    document.body.classList.add('modal-open');
+  });
+
+  modalEl.querySelectorAll('[data-bs-dismiss="modal"]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      if (window.bootstrap && window.bootstrap.Modal) return;
+      modalEl.classList.remove('show');
+      modalEl.style.display = 'none';
+      modalEl.setAttribute('aria-hidden', 'true');
+      modalEl.removeAttribute('aria-modal');
+      document.body.classList.remove('modal-open');
+      document.querySelectorAll('.modal-backdrop').forEach(function(backdrop) {
+        backdrop.remove();
+      });
+    });
+  });
+});
+</script>
+{% endblock %}
 
 {% endblock %}

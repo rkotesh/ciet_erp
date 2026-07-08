@@ -115,7 +115,7 @@ MIDDLEWARE = [
     'django_htmx.middleware.HtmxMiddleware',
     'apps.core.middleware.RoleMiddleware',
     'apps.core.middleware.SiteThemeMiddleware',
-    'apps.core.middleware.DisableRightClickMiddleware',
+
 ]
 
 ROOT_URLCONF = 'config.urls'

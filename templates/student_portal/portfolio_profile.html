@@ -192,10 +192,14 @@
         </p>
 
         <p class="hero-bio reveal reveal-delay-2">
+          {% if profile.profile_summary %}
+          {{ profile.profile_summary|linebreaksbr }}
+          {% else %}
           {% if profile.department %}
           {{ first_name }}{% if last_name %} {{ last_name }}{% endif %} is a {{ profile.department.name }} student{% if profile.batch %} from batch {{ profile.batch }}{% endif %} at Chalapathi Institute of Engineering and Technology.
           {% else %}
           {{ first_name }}{% if last_name %} {{ last_name }}{% endif %}'s student portfolio is connected to the ERP backend and updated from live profile data.
+          {% endif %}
           {% endif %}
         </p>
 

@@ -1,154 +1,201 @@
 {% extends 'student_portal/base_portal.html' %}
-{% load static %}
 
 {% block portal_title %}Overview{% endblock %}
 {% block portal_tab_title %}Overview{% endblock %}
 {% block portal_title_display %}Overview{% endblock %}
 
 {% block portal_content %}
-<aside class="portal-welcome-toast" aria-live="polite">
-  <div>
-    <span>Welcome back</span>
-    <strong>{{ profile.user.full_name|default:"Student" }}</strong>
-    <small>{{ profile.department.code|default:profile.department.name }} · {{ profile.roll_no }}</small>
-  </div>
-  <div class="portal-welcome-avatar">
-    {% if profile.photo %}
-    <img src="{{ profile.photo.url }}" alt="">
-    {% else %}
-    {{ profile.user.full_name|first|upper }}
-    {% endif %}
-  </div>
-</aside>
-
-<!-- Quick Nav Grid -->
-<div class="card portal-panel portal-quick-panel motion-rise delay-1">
-  <div class="card-header-custom">
-    <h2 class="portal-panel-title">Quick Access</h2>
-  </div>
-  <div class="card-body portal-quick-grid">
-
-    <a href="{% url 'student-certifications' %}" class="portal-quick-card">
-      <div class="portal-quick-label">CERTIFICATIONS</div>
-      <div class="portal-quick-value">{{ portfolio_stats.certifications }} Added</div>
-    </a>
-    <a href="{% url 'student-courses' %}" class="portal-quick-card">
-      <div class="portal-quick-label">COURSES</div>
-      <div class="portal-quick-value">Semester Catalogue</div>
-    </a>
-    <a href="{% url 'student-education' %}" class="portal-quick-card">
-      <div class="portal-quick-label">EDUCATION</div>
-      <div class="portal-quick-value">{{ portfolio_stats.education }} Records</div>
-    </a>
-    <a href="{% url 'student-events' %}" class="portal-quick-card">
-      <div class="portal-quick-label">EVENTS</div>
-      <div class="portal-quick-value">Campus Activity</div>
-    </a>
-    <a href="{% url 'student-internships' %}" class="portal-quick-card">
-      <div class="portal-quick-label">INTERNSHIPS</div>
-      <div class="portal-quick-value">{{ portfolio_stats.internships }} Added</div>
-    </a>
-    <a href="{% url 'student-research' %}" class="portal-quick-card">
-      <div class="portal-quick-label">RESEARCH</div>
-      <div class="portal-quick-value">Papers & Publications</div>
-    </a>
-    <a href="{% url 'student-academics' %}" class="portal-quick-card">
-      <div class="portal-quick-label">RESULTS</div>
-      <div class="portal-quick-value">Semester Marks</div>
-    </a>
-    <a href="{% url 'student-projects' %}" class="portal-quick-card">
-      <div class="portal-quick-label">PROJECTS</div>
-      <div class="portal-quick-value">{{ portfolio_stats.projects }} Deployed</div>
-    </a>
-  </div>
-</div>
-
-<div class="portal-overview-layout portal-overview-layout-wide motion-rise delay-2">
-  <section class="card portal-panel">
-    <div class="card-header-custom">
-      <h2 class="portal-panel-title">View</h2>
-      <span class="portal-mini-pill">{{ profile_completion }}% Ready</span>
+<article class="portal-dashboard-overview motion-rise delay-1">
+  <section class="portal-overview-hero">
+    <div class="portal-talent-mark">
+      {% if profile.photo %}
+      <img src="{{ profile.photo.url }}" alt="{{ profile.user.full_name|default:'Student' }} profile photo">
+      {% else %}
+      <span>{{ profile.user.full_name|default:"S"|slice:":1" }}</span>
+      {% endif %}
     </div>
-    <div class="portal-recruiter-grid">
-      <div class="portal-recruiter-card">
-        <span>Identity</span>
-        <strong>{{ profile.user.full_name|default:"Student" }}</strong>
-        <small>{{ profile.roll_no }} · {{ profile.department.code|default:profile.department.name }}{% if profile.section %} · {{ profile.section.name }}{% endif %}</small>
+    <div class="portal-overview-identity">
+      <h1>{{ profile.user.full_name|default:"Student" }}</h1>
+      <p>{{ profile.department.name|default:"Department" }}{% if profile.section %} · {{ profile.section.name }}{% endif %}</p>
+      <div class="portal-overview-contact">
+        <span>{{ profile.roll_no }}</span>
+        <span>Batch {{ profile.batch }}</span>
+        {% if profile.personal_phone or profile.user.phone %}<span>{{ profile.personal_phone|default:profile.user.phone }}</span>{% endif %}
+        {% if profile.personal_email or profile.user.email %}<span>{{ profile.personal_email|default:profile.user.email }}</span>{% endif %}
+        {% for label, url in filled_social_links %}
+        <a href="{{ url }}" target="_blank" rel="noopener">{{ label }}</a>
+        {% endfor %}
       </div>
-      <div class="portal-recruiter-card">
-        <span>Proof of Work</span>
-        <strong>{{ portfolio_stats.projects }} Projects</strong>
-        <small>{{ portfolio_stats.certifications }} certifications · {{ dashboard_counts.research }} research items</small>
+    </div>
+
+    <div class="portal-readiness-card">
+      <span>Profile Readiness</span>
+      <strong>{{ profile_completion }}%</strong>
+      <div class="portal-readiness-track"><i class="portal-readiness-fill" data-progress="{{ profile_completion }}"></i></div>
+      <small>{{ dashboard_counts.verified_total }} verified item{{ dashboard_counts.verified_total|pluralize }}</small>
+    </div>
+  </section>
+
+  <section class="portal-overview-card portal-overview-summary">
+    <div class="portal-section-head">
+      <span>Profile Summary</span>
+      <strong>{{ profile.department.code|default:profile.department.name }}</strong>
+    </div>
+    {% if profile.profile_summary %}
+    <p>{{ profile.profile_summary|linebreaksbr }}</p>
+    {% else %}
+    <p>Add a professional summary from Profile Settings to make this overview read like your resume introduction for recruiters.</p>
+    {% endif %}
+  </section>
+
+  <section class="portal-spotlight-grid">
+    <div class="portal-spotlight-card">
+      <span>Featured Project</span>
+      {% if latest_records.project %}
+      <h3>{{ latest_records.project.title }}</h3>
+      <p>{{ latest_records.project.tech_stack }}</p>
+      {% else %}
+      <h3>Project portfolio pending</h3>
+      <p>Add a project to highlight practical work for recruiters.</p>
+      {% endif %}
+    </div>
+    <div class="portal-spotlight-card">
+      <span>Academics</span>
+      <h3>{{ profile.department.code|default:profile.department.name }} · {{ profile.batch }}</h3>
+      <p>CGPA {{ profile.cgpa|default:"-" }} · {{ dashboard_counts.subjects }} subject{{ dashboard_counts.subjects|pluralize }}</p>
+    </div>
+    
+  </section>
+
+  <section class="portal-overview-grid">
+    <div class="portal-overview-card">
+      <div class="portal-section-head">
+        <span>Portal Snapshot</span>
+        <strong>{{ dashboard_counts.subjects }} subject{{ dashboard_counts.subjects|pluralize }}</strong>
       </div>
-      <div class="portal-recruiter-card">
-        <span>Experience Signal</span>
-        <strong>{{ portfolio_stats.internships }} Internships</strong>
-        <small>{{ dashboard_counts.events }} events · {{ dashboard_counts.courses }} courses</small>
+      <div class="portal-snapshot-grid">
+        <div><b>Academic</b><em>{{ profile.department.name|default:"Department" }} · Batch {{ profile.batch }}</em></div>
+        <div><b>Coursework</b><em>{{ dashboard_counts.courses }} course{{ dashboard_counts.courses|pluralize }}</em></div>
+        <div><b>Proof of Work</b><em>{{ portfolio_stats.projects }} project{{ portfolio_stats.projects|pluralize }} · {{ portfolio_stats.certifications }} cert{{ portfolio_stats.certifications|pluralize }}</em></div>
+        <div><b>Reachability</b><em>{{ dashboard_counts.social_links }} social link{{ dashboard_counts.social_links|pluralize }} · {% if profile.personal_phone or profile.user.phone %}phone added{% else %}phone pending{% endif %}</em></div>
       </div>
-      <div class="portal-recruiter-card">
-        <span>Academic Signal</span>
-        <strong>CGPA {{ profile.cgpa|default:"-" }}</strong>
-        <small>{{ dashboard_counts.subjects }} subjects · Batch {{ profile.batch }}</small>
+    </div>
+
+    <div class="portal-overview-card">
+      <div class="portal-section-head">
+        <span>Education</span>
+        <strong>{{ profile.batch }}</strong>
       </div>
-      <div class="portal-recruiter-card">
-        <span>Verification</span>
-        <strong>{{ dashboard_counts.verified_total }} Verified</strong>
-        <small>{{ verified_counts.certifications }} certs · {{ verified_counts.projects }} projects · {{ verified_counts.results }} results</small>
-      </div>
-      <div class="portal-recruiter-card">
-        <span>Reachability</span>
-        <strong>{% if profile.resume %}Resume Ready{% else %}Resume Pending{% endif %}</strong>
-        <small>{{ dashboard_counts.social_links }} social links · {% if profile.personal_phone or profile.user.phone %}phone added{% else %}phone pending{% endif %}</small>
+      <div class="portal-record-list-clean">
+        <div class="portal-record-clean">
+          <h3>{{ profile.department.name|default:"Current Programme" }}</h3>
+          <p>CGPA {{ profile.cgpa|default:"-" }} · {{ profile.roll_no }}</p>
+        </div>
+        {% for education in overview_records.education %}
+        <div class="portal-record-clean">
+          <h3>{{ education.get_edu_type_display }}</h3>
+          <p>{{ education.institution|default:education.board_university }}{% if education.score %} · {{ education.score }} {{ education.score_type }}{% endif %}</p>
+        </div>
+        {% endfor %}
       </div>
     </div>
   </section>
 
-  <section class="card portal-panel portal-activity-panel">
-    <div class="card-header-custom">
-      <h2 class="portal-panel-title">Recent Activity</h2>
-    </div>
-    <div class="portal-activity-list">
-      {% if activity_posts %}
-      {% for item in activity_posts|slice:":5" %}
-      <div class="portal-activity-item">
-        <div class="portal-activity-kind">{{ item.kind }}</div>
-        <div class="portal-activity-title">{{ item.title }}</div>
-        <div class="portal-activity-sub">{{ item.subtitle|default:"Updated profile record" }}</div>
+  <section class="portal-overview-grid">
+    <div class="portal-overview-card">
+      <div class="portal-section-head">
+        <span>Projects</span>
+        <strong>{{ portfolio_stats.projects }} total</strong>
       </div>
-      {% endfor %}
+      {% if overview_records.projects %}
+      <div class="portal-record-list-clean">
+        {% for project in overview_records.projects %}
+        <div class="portal-record-clean">
+          <div class="portal-record-top"><h3>{{ project.title }}</h3><span>{{ project.get_project_type_display }}</span></div>
+          <p>{{ project.tech_stack }}</p>
+          <small>{{ project.description }}</small>
+        </div>
+        {% endfor %}
+      </div>
       {% else %}
-      <div class="portal-empty">No recent portfolio activity yet.</div>
+      <p class="portal-empty-copy">No projects added yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="portal-overview-card">
+      <div class="portal-section-head">
+        <span>Experience</span>
+        <strong>{{ portfolio_stats.internships }} total</strong>
+      </div>
+      {% if overview_records.internships %}
+      <div class="portal-record-list-clean">
+        {% for internship in overview_records.internships %}
+        <div class="portal-record-clean">
+          <div class="portal-record-top">
+            <h3>{{ internship.role }}</h3>
+            <span>{{ internship.start_date|date:"M Y" }}{% if internship.end_date %} - {{ internship.end_date|date:"M Y" }}{% else %} - Present{% endif %}</span>
+          </div>
+          <p>{{ internship.organization }}{% if internship.technologies %} · {{ internship.technologies }}{% endif %}</p>
+          {% if internship.description %}<small>{{ internship.description }}</small>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="portal-empty-copy">No internship experience added yet.</p>
       {% endif %}
     </div>
   </section>
-</div>
 
-<div class="portal-overview-layout motion-rise delay-3">
-  <section class="card portal-panel portal-health-panel">
-    <div class="card-header-custom">
-      <h2 class="portal-panel-title">Academic Summary</h2>
-      <a href="{% url 'student-academics' %}" class="portal-panel-link">View Marks &rarr;</a>
+  <section class="portal-overview-grid">
+    <div class="portal-overview-card">
+      <div class="portal-section-head">
+        <span>Certifications</span>
+        <strong>{{ portfolio_stats.certifications }} total</strong>
+      </div>
+      {% if overview_records.certifications %}
+      <div class="portal-record-list-clean">
+        {% for cert in overview_records.certifications %}
+        <div class="portal-record-clean">
+          <div class="portal-record-top"><h3>{{ cert.title }}</h3><span>{{ cert.issued_date|date:"Y" }}</span></div>
+          <p>{{ cert.issuer }}{% if cert.is_verified %} · Verified{% endif %}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="portal-empty-copy">No certifications added yet.</p>
+      {% endif %}
     </div>
-    <div class="portal-health-grid portal-academic-simple">
-      <div><span>{{ profile.cgpa|default:"-" }}</span><small>CGPA</small></div>
-      <div><span>{{ profile.batch }}</span><small>Batch</small></div>
-      <div><span>{{ profile.department.code|default:profile.department.name|default:"-" }}</span><small>Branch</small></div>
+
+    <div class="portal-overview-card">
+      <div class="portal-section-head">
+        <span>Research</span>
+        <strong>{{ dashboard_counts.research }} total</strong>
+      </div>
+      {% if overview_records.research %}
+      <div class="portal-record-list-clean">
+        {% for item in overview_records.research %}
+        <div class="portal-record-clean">
+          <div class="portal-record-top"><h3>{{ item.title }}</h3><span>{{ item.get_outcome_display }}</span></div>
+          <p>{{ item.publisher|default:item.advisor_name }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="portal-empty-copy">No research added yet.</p>
+      {% endif %}
     </div>
   </section>
+</article>
+{% endblock %}
 
-  <section class="card portal-panel portal-health-panel">
-    <div class="card-header-custom">
-      <h2 class="portal-panel-title">Portfolio Health</h2>
-      <a href="{% url 'student-profile-edit' %}" class="portal-panel-link">Update Profile &rarr;</a>
-    </div>
-    <div class="portal-health-grid">
-      <div><span>{{ dashboard_counts.verified_total }}</span><small>Verified Items</small></div>
-      <div><span>{{ dashboard_counts.social_links }}</span><small>Social Links</small></div>
-      <div><span>{{ dashboard_counts.courses }}</span><small>Courses</small></div>
-      <div><span>{{ dashboard_counts.events }}</span><small>Events</small></div>
-      <div><span>{{ dashboard_counts.research }}</span><small>Research</small></div>
-      <div><span>{{ dashboard_counts.subjects }}</span><small>Subjects</small></div>
-    </div>
-  </section>
-</div>
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.portal-readiness-fill[data-progress]').forEach(function(fill) {
+    var progress = Number(fill.dataset.progress || 0);
+    fill.style.width = Math.max(0, Math.min(100, progress)) + '%';
+  });
+});
+</script>
 {% endblock %}

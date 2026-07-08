@@ -13,6 +13,7 @@ class StudentProfile(BaseModel):
     cgpa       = models.DecimalField(max_digits=4, decimal_places=2, default=0.0)
     resume     = models.FileField(upload_to='resumes/', blank=True)
     photo      = models.ImageField(upload_to='student_photos/', blank=True, null=True)
+    profile_summary = models.TextField(blank=True, default='')
     is_public  = models.BooleanField(default=False)
     slug       = models.SlugField(unique=True, blank=True)
 

@@ -119,6 +119,11 @@
             <label class="df-label">College Roll No (Read-only)</label>
             <input type="text" class="df-input" value="{{ profile.roll_no }}" readonly style="background:#f1f5f9;cursor:not-allowed;">
           </div>
+          <div class="df-group" style="grid-column:span 2;">
+            <label class="df-label">Professional Summary</label>
+            <textarea name="profile_summary" class="df-input form-textarea" rows="5" maxlength="900" placeholder="Write the HR-facing summary you want on your dashboard. Example: AIML student focused on Django, AI projects, and production-ready web systems.">{{ profile.profile_summary }}</textarea>
+            <p style="font-size:11px;color:var(--muted);margin-top:4px;">This appears in the Overview page exactly as you write it.</p>
+          </div>
         </div>
       </div>
 

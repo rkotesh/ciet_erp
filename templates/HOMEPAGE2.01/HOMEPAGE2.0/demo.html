@@ -198,13 +198,13 @@
 
         /* ========== CARD HOVER GLOW ========== */
         .card-glow {
-            transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+            transition: none;
         }
 
         .card-glow:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 16px 40px rgba(175, 12, 62, .15);
-            border-color: #AF0C3E;
+            transform: none;
+            box-shadow: none;
+            border-color: inherit;
         }
 
         /* ========== PROGRAM CARDS ========== */
@@ -253,8 +253,7 @@
             inset: 0;
             background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .06), transparent);
             background-size: 200% 100%;
-            animation: shimmer 2.5s infinite;
-        }
+}
 
         /* ========== RECRUITER TAGS ========== */
         .tag {

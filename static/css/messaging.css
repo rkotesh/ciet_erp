@@ -1,21 +1,22 @@
 .ciet-message-widget {
-  --msg-red: #970006;
-  --msg-burgundy: #852b43;
-  --msg-mist: #f2f2f2;
-  --msg-gray: #929290;
-  --msg-black: #0b0b0b;
-  --msg-espresso: #47301f;
-  --msg-brown: #80613f;
-  --msg-taupe: #b2947b;
-  --msg-cocoa: #2d1308;
-  --msg-pale: #d8dbd5;
+  --msg-aqua: #22d3ee;
+  --msg-cyan: #06b6d4;
+  --msg-pink: #ec4899;
+  --msg-violet: #7c3aed;
+  --msg-gold: #facc15;
+  --msg-ink: #020308;
+  --msg-panel: rgba(15, 23, 42, .92);
+  --msg-soft: rgba(226, 232, 240, .09);
+  --msg-line: rgba(226, 232, 240, .16);
+  --msg-text: #f8fafc;
+  --msg-muted: #cbd5e1;
 }
 
 .ciet-message-backdrop {
   position: fixed;
   inset: 0;
   z-index: 9997;
-  background: rgba(11, 11, 11, 0.46);
+  background: rgba(2, 3, 8, 0.74);
   backdrop-filter: blur(6px);
   opacity: 0;
   pointer-events: none;
@@ -32,13 +33,13 @@
   transform: translate(-50%, -46%) scale(.96);
   opacity: 0;
   pointer-events: none;
-  border-radius: 30px;
-  border: 1px solid rgba(71, 48, 31, .24);
+  border-radius: 24px;
+  border: 1px solid var(--msg-line);
   background:
-    radial-gradient(circle at 12% 10%, rgba(151, 0, 6, .12), transparent 34%),
-    radial-gradient(circle at 88% 0%, rgba(178, 148, 123, .24), transparent 34%),
-    linear-gradient(135deg, rgba(242, 242, 242, .98), rgba(216, 219, 213, .94));
-  box-shadow: 0 28px 80px rgba(45, 19, 8, .34);
+    radial-gradient(circle at 12% 10%, rgba(34, 211, 238, .15), transparent 34%),
+    radial-gradient(circle at 88% 0%, rgba(236, 72, 153, .16), transparent 34%),
+    linear-gradient(135deg, rgba(15, 23, 42, .98), rgba(17, 24, 39, .96));
+  box-shadow: 0 34px 92px rgba(0, 0, 0, .56);
   overflow: hidden;
   transition: opacity .22s ease, transform .22s ease;
 }
@@ -59,12 +60,12 @@
   justify-content: space-between;
   gap: 18px;
   padding: 20px 22px;
-  border-bottom: 1px solid rgba(71, 48, 31, .16);
+  border-bottom: 1px solid var(--msg-line);
 }
 
 .ciet-message-kicker {
   display: block;
-  color: var(--msg-burgundy);
+  color: var(--msg-aqua);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .08em;
@@ -73,7 +74,7 @@
 
 .ciet-message-header h2 {
   margin: 2px 0 0;
-  color: var(--msg-black);
+  color: var(--msg-text);
   font-size: 22px;
   font-weight: 850;
 }
@@ -83,8 +84,8 @@
   height: 38px;
   border: 0;
   border-radius: 999px;
-  background: var(--msg-cocoa);
-  color: var(--msg-mist);
+  background: var(--msg-soft);
+  color: var(--msg-muted);
   font-size: 24px;
   line-height: 1;
 }
@@ -106,14 +107,14 @@
 }
 
 .ciet-message-card {
-  border: 1px solid rgba(71, 48, 31, .16);
-  border-radius: 22px;
+  border: 1px solid var(--msg-line);
+  border-radius: 18px;
   padding: 14px;
-  background: rgba(242, 242, 242, .72);
+  background: rgba(226, 232, 240, .07);
 }
 
 .ciet-message-card.is-sent {
-  background: rgba(178, 148, 123, .20);
+  background: rgba(34, 211, 238, .10);
 }
 
 .ciet-message-meta {
@@ -122,14 +123,14 @@
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 8px;
-  color: var(--msg-espresso);
+  color: var(--msg-muted);
   font-size: 11px;
   font-weight: 800;
 }
 
 .ciet-message-card p {
   margin: 0;
-  color: var(--msg-black);
+  color: var(--msg-text);
   font-size: 14px;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -141,8 +142,8 @@
   border: 0;
   border-radius: 999px;
   padding: 7px 12px;
-  background: var(--msg-cocoa);
-  color: var(--msg-mist);
+  background: rgba(34, 211, 238, .16);
+  color: var(--msg-aqua);
   font-size: 12px;
   font-weight: 800;
 }
@@ -152,12 +153,12 @@
   align-content: start;
   gap: 10px;
   padding: 18px;
-  border-left: 1px solid rgba(71, 48, 31, .16);
-  background: rgba(216, 219, 213, .42);
+  border-left: 1px solid var(--msg-line);
+  background: rgba(2, 6, 23, .38);
 }
 
 .ciet-message-compose label {
-  color: var(--msg-burgundy);
+  color: var(--msg-aqua);
   font-size: 11px;
   font-weight: 850;
   text-transform: uppercase;
@@ -166,10 +167,10 @@
 .ciet-message-compose select,
 .ciet-message-compose textarea {
   width: 100%;
-  border: 1px solid rgba(71, 48, 31, .24);
-  border-radius: 18px;
-  background: rgba(242, 242, 242, .84);
-  color: var(--msg-black);
+  border: 1px solid var(--msg-line);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, .78);
+  color: var(--msg-text);
   padding: 11px 12px;
   outline: none;
 }
@@ -182,7 +183,7 @@
 .ciet-message-reply-note,
 .ciet-message-state,
 .ciet-message-status {
-  color: var(--msg-espresso);
+  color: var(--msg-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -198,8 +199,8 @@
   border: 0;
   border-radius: 999px;
   padding: 10px 18px;
-  background: var(--msg-red);
-  color: var(--msg-mist);
+  background: var(--msg-cyan);
+  color: #020308;
   font-weight: 850;
 }
 
@@ -215,8 +216,8 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #970006;
-  color: #f2f2f2;
+  background: var(--msg-pink);
+  color: var(--msg-text);
   font-size: 9px;
   font-weight: 900;
   line-height: 16px;
@@ -232,9 +233,9 @@
   height: 46px;
   border: 0;
   border-radius: 999px;
-  background: #2d1308;
-  color: #f2f2f2;
-  box-shadow: 0 16px 38px rgba(45, 19, 8, .26);
+  background: rgba(15, 23, 42, .92);
+  color: var(--msg-aqua);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .34);
 }
 
 .ciet-message-floating i,
@@ -250,7 +251,7 @@
 
   .ciet-message-compose {
     border-left: 0;
-    border-top: 1px solid rgba(71, 48, 31, .16);
+    border-top: 1px solid var(--msg-line);
   }
 
   .ciet-message-list {

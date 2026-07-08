@@ -5,6 +5,24 @@
 
 'use strict';
 
+function getPortalPage() {
+  const path = window.location.pathname.replace(/\/+$/, '');
+  const last = path.split('/').pop() || 'index';
+  const aliases = {
+    education: 'education.html',
+    internships: 'internships.html',
+    projects: 'projects.html',
+    certifications: 'certifications.html',
+    research: 'research.html',
+    events: 'events.html',
+    cohorts: 'cohorts.html',
+    profile: 'profile.html',
+    settings: 'settings.html',
+    portal: 'index.html'
+  };
+  return aliases[last] || (last.includes('.') ? last : `${last}.html`);
+}
+
 /* ─────────────────────────────────────
    TAB SWITCHING
 ───────────────────────────────────── */
@@ -35,12 +53,12 @@ function initFlipCards() {
    ACTIVE NAV LINK
 ───────────────────────────────────── */
 function setActiveNav() {
-  const page = location.pathname.split('/').pop() || 'index.html';
+  const page = getPortalPage();
   document.querySelectorAll('.nav-item').forEach(item => {
     const href     = item.getAttribute('href') || '';
-    const hrefPage = href.split('/').pop();
+    const hrefPage = href.replace(/\/+$/, '').split('/').pop();
     const target   = item.dataset.page || hrefPage;
-    if (target && target === page) item.classList.add('active');
+    if (target && (target === page || `${target}.html` === page)) item.classList.add('active');
   });
 }
 
@@ -85,14 +103,14 @@ function showToast(msg, type = 'success') {
 function initDrawer() {
   if (document.getElementById('portal-drawer')) return;
   document.body.insertAdjacentHTML('beforeend', `
-    <div id="drawer-backdrop" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:400;backdrop-filter:blur(3px);transition:opacity .25s;"></div>
-    <div id="portal-drawer" style="display:none;position:fixed;top:0;right:0;height:100%;width:100%;max-width:440px;background:#fff;z-index:500;box-shadow:-8px 0 48px rgba(0,0,0,.14);overflow-y:auto;transition:transform .3s cubic-bezier(.4,0,.2,1);transform:translateX(100%);font-family:'Inter',sans-serif;">
-      <div id="drawer-header" style="padding:24px 28px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;">
+    <div id="drawer-backdrop" style="display:none;position:fixed;inset:0;background:rgba(2,3,8,0.72);z-index:400;backdrop-filter:blur(6px);transition:opacity .25s;"></div>
+    <div id="portal-drawer" style="display:none;position:fixed;top:0;right:0;height:100%;width:100%;max-width:440px;background:linear-gradient(145deg, rgba(15,23,42,.98), rgba(17,24,39,.95));color:#f8fafc;z-index:500;box-shadow:-18px 0 60px rgba(0,0,0,.44);overflow-y:auto;transition:transform .3s cubic-bezier(.4,0,.2,1);transform:translateX(100%);font-family:'Inter',sans-serif;border-left:1px solid rgba(226,232,240,.14);">
+      <div id="drawer-header" style="padding:24px 28px 20px;border-bottom:1px solid rgba(226,232,240,.14);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(15,23,42,.96);z-index:1;backdrop-filter:blur(14px);">
         <div>
-          <h2 id="drawer-title" style="font-size:16px;font-weight:700;color:#0f172a;margin:0;"></h2>
-          <p id="drawer-subtitle" style="font-size:12px;color:#64748b;margin:4px 0 0;"></p>
+          <h2 id="drawer-title" style="font-size:16px;font-weight:800;color:#22d3ee;margin:0;"></h2>
+          <p id="drawer-subtitle" style="font-size:12px;color:#cbd5e1;margin:4px 0 0;"></p>
         </div>
-        <button id="drawer-close" style="width:34px;height:34px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:16px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">✕</button>
+        <button id="drawer-close" style="width:34px;height:34px;border-radius:999px;background:rgba(226,232,240,.10);border:1px solid rgba(226,232,240,.16);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:16px;flex-shrink:0;transition:background .15s;" onmouseover="this.style.background='rgba(34,211,238,.16)'" onmouseout="this.style.background='rgba(226,232,240,.10)'">✕</button>
       </div>
       <div id="drawer-body" style="padding:24px 28px 32px;"></div>
     </div>
@@ -209,7 +227,7 @@ function dropzone(label='Drop certificate image / PDF here, or click to browse',
 }
 function drawerFooter(saveTxt='Save', toast='Saved successfully!', toastType='success') {
   return `
-    <div style="display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid #e2e8f0;">
+    <div style="display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid rgba(226,232,240,.14);">
       <button onclick="closeDrawer()" class="df-btn-outline" style="flex:1;">Cancel</button>
       <button id="drawer-save-btn" data-toast="${toast}" data-toast-type="${toastType}" class="df-btn-primary" style="flex:1;">${saveTxt}</button>
     </div>`;
@@ -234,7 +252,7 @@ const PortalStore = {
   },
   init() {
     this.load();
-    const page = location.pathname.split('/').pop() || 'index.html';
+    const page = getPortalPage();
     if (page === 'internships.html') {
       const infoBanner = document.querySelector('.info-banner');
       const main = document.querySelector('.main-content');
@@ -704,32 +722,33 @@ function injectDrawerStyles() {
     @keyframes slideInRight { from{transform:translateX(24px);opacity:0} to{transform:translateX(0);opacity:1} }
 
     .df-group { display:flex;flex-direction:column;gap:5px; }
-    .df-label { font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.08em; }
+    .df-label { font-size:11px;font-weight:800;color:#cbd5e1;text-transform:uppercase;letter-spacing:0.08em; }
     .df-input {
-      padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;
-      font-size:13px;color:#0f172a;background:#fff;outline:none;
+      padding:10px 13px;border:1.5px solid rgba(226,232,240,.18);border-radius:14px;
+      font-size:13px;color:#f8fafc;background:rgba(15,23,42,.78);outline:none;
       transition:border-color .2s,box-shadow .2s;font-family:'Inter',sans-serif;width:100%;box-sizing:border-box;
     }
-    .df-input:focus { border-color:#AF0C3E;box-shadow:0 0 0 3px rgba(175,12,62,.08); }
+    .df-input::placeholder { color:rgba(203,213,225,.58); }
+    .df-input:focus { border-color:#22d3ee;box-shadow:0 0 0 3px rgba(34,211,238,.16); }
     .df-textarea { resize:vertical;min-height:80px; }
-    .df-select { appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer; }
+    .df-select { appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer; }
 
     .df-btn-primary {
       display:inline-flex;align-items:center;justify-content:center;gap:6px;
-      padding:9px 16px;background:#AF0C3E;color:#fff;border:none;border-radius:8px;
+      padding:10px 16px;background:#06b6d4;color:#020617;border:none;border-radius:999px;
       font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;
       transition:background .15s,transform .1s;
     }
-    .df-btn-primary:hover { background:#8F0830; }
+    .df-btn-primary:hover { background:#22d3ee; }
     .df-btn-primary:active { transform:scale(.98); }
 
     .df-btn-outline {
       display:inline-flex;align-items:center;justify-content:center;gap:6px;
-      padding:9px 16px;background:#fff;color:#0f172a;border:1.5px solid #e2e8f0;border-radius:8px;
+      padding:10px 16px;background:rgba(226,232,240,.08);color:#cbd5e1;border:1.5px solid rgba(226,232,240,.18);border-radius:999px;
       font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;
       transition:border-color .15s;
     }
-    .df-btn-outline:hover { border-color:#AF0C3E;color:#AF0C3E; }
+    .df-btn-outline:hover { border-color:#22d3ee;color:#22d3ee; }
 
     .dropzone-area:hover,.dropzone-area.dz-over {
       border-color:#AF0C3E !important;background:rgba(175,12,62,.03);
@@ -777,7 +796,7 @@ function wireButtons() {
   });
 
 
-  const page = location.pathname.split('/').pop() || 'index.html';
+  const page = getPortalPage();
 
   // ── Dashboard (index.html) ──
   if (page === 'index.html') {
@@ -789,13 +808,8 @@ function wireButtons() {
 
   // ── Education ──
   if (page === 'education.html') {
-    document.querySelectorAll('.btn-primary, [data-action="add-education"]').forEach(btn => {
-      if (/add|education|rank/i.test(btn.textContent)) {
-        btn.addEventListener('click', e => { e.preventDefault(); DRAWERS['add-education'](); });
-      }
-    });
-    // dashed "Add Education / Rank" placeholder card/button
-    document.querySelectorAll('[onclick*="education"], .add-edu-btn').forEach(btn => {
+    document.querySelectorAll('[data-action="add-education"], .add-edu-btn').forEach(btn => {
+      if (btn.matches('[data-bs-toggle], [data-bs-target]')) return;
       btn.addEventListener('click', e => { e.preventDefault(); DRAWERS['add-education'](); });
     });
   }

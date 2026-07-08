@@ -332,6 +332,14 @@ class StudentPortalView(LoginRequiredMixin, View):
             'course': profile.courses.order_by('-created_at').first(),
             'research': profile.research.order_by('-created_at').first(),
         }
+        overview_records = {
+            'education': profile.education.order_by('-year_of_passing', '-created_at'),
+            'certifications': profile.certifications.order_by('-issued_date', '-created_at')[:6],
+            'projects': profile.projects.order_by('-created_at')[:6],
+            'internships': profile.internships.order_by('-start_date', '-created_at')[:4],
+            'courses': profile.courses.order_by('-created_at')[:8],
+            'research': profile.research.order_by('-published_date', '-created_at')[:4],
+        }
 
         return render(request, 'student_portal/dashboard.html', {
             'profile': profile,
@@ -344,6 +352,7 @@ class StudentPortalView(LoginRequiredMixin, View):
             'profile_completion': profile_completion,
             'filled_social_links': filled_social_links,
             'latest_records': latest_records,
+            'overview_records': overview_records,
         })
 
 
@@ -397,6 +406,7 @@ class StudentProfileEditView(LoginRequiredMixin, View):
             profile.personal_phone_verified = True
         profile.personal_email = personal_email
         profile.personal_phone = personal_phone
+        profile.profile_summary = request.POST.get('profile_summary', '').strip()
 
         # Links
         for field in ['linkedin_url', 'github_url', 'leetcode_url',
@@ -729,29 +739,52 @@ class StudentEducationView(LoginRequiredMixin, View):
         profile = get_object_or_404(StudentProfile, user=request.user)
         education = EducationBackground.objects.filter(student=profile)
         existing_edu_types = [e.edu_type for e in education]
+        available_edu_types = [
+            choice for choice in EducationBackground.EduType.choices
+            if choice[0] not in existing_edu_types
+        ]
         return render(request, 'student_portal/education.html', {
             'profile': profile, 'education': education,
             'edu_types': EducationBackground.EduType.choices,
             'existing_edu_types': existing_edu_types,
+            'available_edu_types': available_edu_types,
         })
 
     def post(self, request):
         profile = get_object_or_404(StudentProfile, user=request.user)
         action = request.POST.get('action')
         edu_type = request.POST.get('edu_type')
-        
+
         if action == 'delete':
             EducationBackground.objects.filter(student=profile, edu_type=edu_type).delete()
             return redirect('student-education')
+
+        if not edu_type:
+            messages.error(request, 'Please select an education type. If all types are already added, edit an existing card instead.')
+            return redirect('student-education')
+
+        year_of_passing = request.POST.get('year_of_passing') or None
+        if year_of_passing:
+            try:
+                year_of_passing = int(year_of_passing)
+            except (TypeError, ValueError):
+                messages.error(request, 'Year of passing must be a valid year.')
+                return redirect('student-education')
+
+        score_type = request.POST.get('score_type', '%')
+        score_type = {
+            'CGPA': 'GPA',
+            'Percentage': '%',
+        }.get(score_type, score_type)
 
         EducationBackground.objects.update_or_create(
             student=profile, edu_type=edu_type,
             defaults={
                 'institution': request.POST.get('institution', ''),
                 'board_university': request.POST.get('board_university', ''),
-                'year_of_passing': request.POST.get('year_of_passing') or None,
+                'year_of_passing': year_of_passing,
                 'score': request.POST.get('score', ''),
-                'score_type': request.POST.get('score_type', '%'),
+                'score_type': score_type,
             }
         )
         messages.success(request, 'Education details updated successfully.')
