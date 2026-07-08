@@ -8,6 +8,7 @@ from django.views.generic import TemplateView
 from django.utils.timezone import now
 from django.db.models import Count, Avg, Q, Sum
 from django.http import HttpResponse, JsonResponse
+from django.contrib import messages
 
 from apps.accounts.models import User
 from apps.academics.models import Department, Section, Subject, Marks, Attendance
@@ -115,12 +116,32 @@ class FacultyHubTemplateView(RoleRequiredMixin, TemplateView):
         return context
 
 
+ROMAN_YEARS = {1: 'I', 2: 'II', 3: 'III', 4: 'IV'}
+
+
 def _student_year_from_batch(batch):
     try:
         start_year = int(str(batch).split('-')[0])
         return min(max(now().year - start_year + 1, 1), 4)
     except (TypeError, ValueError):
         return 1
+
+
+def _batch_display_label(batch):
+    """Convert raw batch string to human-readable year label, e.g. 'I Year (2025-2029)'."""
+    yr = _student_year_from_batch(batch)
+    roman = ROMAN_YEARS.get(yr, str(yr))
+    return f"{roman} Year ({batch})"
+
+
+def _semester_to_year(semester):
+    """Map semester number (1-8) to B.Tech year (I-IV)."""
+    try:
+        sem = int(semester)
+        yr = min(max((sem + 1) // 2, 1), 4)
+        return ROMAN_YEARS.get(yr, str(yr))
+    except (TypeError, ValueError):
+        return None
 
 
 def _user_departments(user):
@@ -281,6 +302,8 @@ class HODDashboardView(RoleRequiredMixin, View):
     def get(self, request):
         dept = Department.objects.filter(hod=request.user).first()
         if not dept:
+            dept = request.user.departments.first()
+        if not dept:
             return render(request, 'faculty/hod_dashboard.html', {'no_dept': True})
 
         # ── Faculty in dept ──
@@ -292,16 +315,107 @@ class HODDashboardView(RoleRequiredMixin, View):
         mentors = User.objects.filter(departments=dept, role='Mentor', is_active=True)
 
         current_year = f"{now().year}-{now().year + 1}"
+
+        # ── Attach mentoring assignment display string if the user is a Mentor ──
+        import re
+        faculty_list = list(faculty_list)
+        for member in faculty_list:
+            member.mentoring_assignment_display = None
+            if member.role == 'Mentor':
+                assignment = StudentMentorAssignment.objects.filter(
+                    mentor=member,
+                    academic_year=current_year
+                ).first()
+                if assignment:
+                    students_in_assignment = list(assignment.students.all().order_by('roll_no'))
+                    if students_in_assignment:
+                        first_s = students_in_assignment[0]
+                        batch_val = first_s.batch
+                        
+                        yr_num = _student_year_from_batch(batch_val)
+                        roman_years = {1: 'I', 2: 'II', 3: 'III', 4: 'IV'}
+                        roman_yr = roman_years.get(yr_num, 'I')
+                        
+                        def get_roll_num(roll_no):
+                            match = re.search(r'\d+$', roll_no)
+                            return int(match.group()) if match else None
+                        
+                        roll_nums = [get_roll_num(s.roll_no) for s in students_in_assignment if get_roll_num(s.roll_no) is not None]
+                        if roll_nums:
+                            min_roll = min(roll_nums)
+                            max_roll = max(roll_nums)
+                            roll_range = f"({min_roll}-{max_roll})"
+                        else:
+                            roll_range = ""
+                        
+                        sec_str = f"-{first_s.section.name}" if first_s.section else ""
+                        member.mentoring_assignment_display = f"{roman_yr} {dept.code}{sec_str} {roll_range}".strip()
+
         direct_assignments = StudentMentorAssignment.objects.filter(
             academic_year=current_year,
             students__department=dept
         ).distinct()
 
-        dept_students = StudentProfile.objects.filter(
+        dept_students_qs = StudentProfile.objects.filter(
             department=dept, is_deleted=False
-        ).select_related('user')
+        ).select_related('user', 'section')
 
-        # ── Dept performance (avg CGPA by batch) ──
+        # Extract unique batches with human-readable year labels
+        raw_batches = list(dept_students_qs.values_list('batch', flat=True).distinct().order_by('batch'))
+        batches = raw_batches  # raw values for form submission
+        batch_labels = {b: _batch_display_label(b) for b in raw_batches}
+
+        # ── Year-wise student breakdown (I, II, III, IV Year) ──
+        year_wise_stats = []
+        for yr_num in [1, 2, 3, 4]:
+            matching_batches = [b for b in raw_batches if _student_year_from_batch(b) == yr_num]
+            count = dept_students_qs.filter(batch__in=matching_batches).count() if matching_batches else 0
+            year_wise_stats.append({
+                'year': yr_num,
+                'roman': ROMAN_YEARS[yr_num],
+                'count': count,
+                'batches': matching_batches,
+            })
+        
+        # Get sections in department
+        sections = Section.objects.filter(department=dept)
+
+        # Attach mentor name + year to each student
+        dept_students = list(dept_students_qs)
+        student_mentor_map = {}
+        for assignment in direct_assignments:
+            mentor_name = assignment.mentor.full_name or assignment.mentor.email
+            for s in assignment.students.all():
+                student_mentor_map[str(s.id)] = mentor_name
+        for student in dept_students:
+            student.assigned_mentor = student_mentor_map.get(str(student.id), "Unassigned")
+            student.year_num = _student_year_from_batch(student.batch)
+            student.year_roman = ROMAN_YEARS.get(student.year_num, 'I')
+
+        # Build assigned mentors information
+        assigned_mentors_info = {}
+        for assignment in direct_assignments:
+            students_in_assignment = list(assignment.students.all().order_by('roll_no'))
+            if students_in_assignment:
+                first_s = students_in_assignment[0]
+                batch_val = first_s.batch
+                sec_val = first_s.section
+                all_class_students = list(StudentProfile.objects.filter(
+                    department=dept, batch=batch_val, section=sec_val, is_deleted=False
+                ).order_by('roll_no'))
+                if all_class_students:
+                    mid = (len(all_class_students) + 1) // 2
+                    first_half_ids = {s.id for s in all_class_students[:mid]}
+                    assigned_ids = {s.id for s in students_in_assignment}
+                    is_first_half = len(assigned_ids.intersection(first_half_ids)) > len(assigned_ids) / 2
+                    half_str = "1st Half" if is_first_half else "2nd Half"
+                    assigned_mentors_info[str(assignment.mentor.id)] = {
+                        'batch': batch_val,
+                        'section': sec_val.name if sec_val else 'N/A',
+                        'half': half_str
+                    }
+
+        # ── Dept performance (avg CGPA by year — I, II, III, IV) ──
         batch_performance = (
             StudentProfile.objects
             .filter(department=dept, is_deleted=False)
@@ -309,8 +423,23 @@ class HODDashboardView(RoleRequiredMixin, View):
             .annotate(avg_cgpa=Avg('cgpa'), count=Count('id'))
             .order_by('batch')
         )
-        perf_labels = [b['batch'] for b in batch_performance]
-        perf_values = [float(b['avg_cgpa'] or 0) for b in batch_performance]
+        # Aggregate by year number
+        year_cgpa = {}  # {1: [values], 2: [values], ...}
+        for b in batch_performance:
+            yr = _student_year_from_batch(b['batch'])
+            if yr not in year_cgpa:
+                year_cgpa[yr] = {'total_cgpa': 0, 'total_count': 0}
+            year_cgpa[yr]['total_cgpa'] += float(b['avg_cgpa'] or 0) * b['count']
+            year_cgpa[yr]['total_count'] += b['count']
+        perf_labels = []
+        perf_values = []
+        for yr_num in [1, 2, 3, 4]:
+            perf_labels.append(f"{ROMAN_YEARS[yr_num]} Year")
+            if yr_num in year_cgpa and year_cgpa[yr_num]['total_count'] > 0:
+                avg = year_cgpa[yr_num]['total_cgpa'] / year_cgpa[yr_num]['total_count']
+                perf_values.append(round(avg, 2))
+            else:
+                perf_values.append(0)
 
         # ── Lesson plans ──
         lesson_plans = LessonPlan.objects.filter(
@@ -318,24 +447,30 @@ class HODDashboardView(RoleRequiredMixin, View):
         ).select_related('subject', 'uploaded_by').order_by('-created_at')[:10]
 
         # ── Timetables ──
-        timetables = Timetable.objects.filter(
+        timetables = list(Timetable.objects.filter(
             department=dept, is_deleted=False
-        ).order_by('-created_at')[:5]
+        ).order_by('-created_at')[:5])
+        for tt in timetables:
+            tt.year_roman = _semester_to_year(tt.semester)
 
         # ── Academic Calendars ──
-        calendars = AcademicCalendar.objects.filter(
+        calendars = list(AcademicCalendar.objects.filter(
             department=dept, is_deleted=False
-        ).order_by('-created_at')[:5]
+        ).order_by('-created_at')[:5])
+        for cal in calendars:
+            cal.year_roman = _semester_to_year(cal.semester)
 
         # ── Training programs ──
         training_programs = TrainingProgram.objects.filter(
             department=dept, is_deleted=False
         ).order_by('-start_date')[:10]
 
-        # ── Announcements (global) ──
-        announcements = Announcement.objects.filter(
-            is_active=True, is_deleted=False
-        ).order_by('-created_at')[:10]
+        # ── Branch notifications published by HOD to branch students ──
+        announcements = Notification.objects.filter(
+            sender=request.user,
+            target_department=dept,
+            target_role=Notification.TargetRole.STUDENT
+        ).order_by('-created_at')[:20]
 
 
         # ── Syllabus completion (dept-wide) ──
@@ -377,6 +512,11 @@ class HODDashboardView(RoleRequiredMixin, View):
             'mentors':            mentors,
             'direct_assignments': direct_assignments,
             'dept_students':      dept_students,
+            'batches':            batches,
+            'batch_labels':       batch_labels,
+            'year_wise_stats':    year_wise_stats,
+            'sections':           sections,
+            'assigned_mentors_info': assigned_mentors_info,
             'current_year':       current_year,
             'lesson_plans':       lesson_plans,
             'timetables':         timetables,
@@ -397,48 +537,176 @@ class HODDashboardView(RoleRequiredMixin, View):
         action = request.POST.get('action')
         dept = Department.objects.filter(hod=request.user).first()
         if not dept:
+            dept = request.user.departments.first()
+        if not dept:
             return redirect('hod-dashboard')
         current_year = f"{now().year}-{now().year + 1}"
 
-        if action == 'assign_mentor_students':
-            mentor_id  = request.POST.get('mentor_id')
+
+
+        if action == 'assign_mentor_halves':
+            batch = request.POST.get('batch')
+            section_id = request.POST.get('section_id')
+            mentor_1_id = request.POST.get('mentor_1_id')
+            mentor_2_id = request.POST.get('mentor_2_id')
+
+            if batch and section_id and mentor_1_id and mentor_2_id:
+                if mentor_1_id == mentor_2_id:
+                    messages.error(request, "Please assign different mentors to each half of the class.")
+                    return redirect('hod-dashboard')
+
+                # Fetch all students in this batch & section
+                students = list(StudentProfile.objects.filter(
+                    department=dept, batch=batch, section_id=section_id, is_deleted=False
+                ).order_by('roll_no'))
+
+                if not students:
+                    messages.error(request, "No students found in the selected batch and section.")
+                    return redirect('hod-dashboard')
+
+                # Split the students into two halves
+                mid = (len(students) + 1) // 2
+                half_1 = students[:mid]
+                half_2 = students[mid:]
+
+                def check_mentor_double_assigned(mentor_id):
+                    existing = StudentMentorAssignment.objects.filter(
+                        mentor_id=mentor_id, academic_year=current_year
+                    ).first()
+                    if existing:
+                        other_students = existing.students.exclude(
+                            id__in=[s.id for s in students]
+                        )
+                        if other_students.exists():
+                            return True
+                    return False
+
+                if check_mentor_double_assigned(mentor_1_id):
+                    mentor_user = User.objects.filter(id=mentor_1_id).first()
+                    mentor_name = mentor_user.full_name if mentor_user else "selected 1st half mentor"
+                    messages.error(request, f"{mentor_name} is already assigned to another class/batch.")
+                    return redirect('hod-dashboard')
+
+                if check_mentor_double_assigned(mentor_2_id):
+                    mentor_user = User.objects.filter(id=mentor_2_id).first()
+                    mentor_name = mentor_user.full_name if mentor_user else "selected 2nd half mentor"
+                    messages.error(request, f"{mentor_name} is already assigned to another class/batch.")
+                    return redirect('hod-dashboard')
+
+                # 1st Half Assignment
+                assign_1, _ = StudentMentorAssignment.objects.update_or_create(
+                    mentor_id=mentor_1_id, academic_year=current_year,
+                    defaults={'assigned_by': request.user}
+                )
+                for s in half_1:
+                    other_assignments = StudentMentorAssignment.objects.filter(
+                        academic_year=current_year
+                    ).exclude(mentor_id=mentor_1_id)
+                    for oa in other_assignments:
+                        oa.students.remove(s)
+                assign_1.students.set(half_1)
+
+                # 2nd Half Assignment
+                assign_2, _ = StudentMentorAssignment.objects.update_or_create(
+                    mentor_id=mentor_2_id, academic_year=current_year,
+                    defaults={'assigned_by': request.user}
+                )
+                for s in half_2:
+                    other_assignments = StudentMentorAssignment.objects.filter(
+                        academic_year=current_year
+                    ).exclude(mentor_id=mentor_2_id)
+                    for oa in other_assignments:
+                        oa.students.remove(s)
+                assign_2.students.set(half_2)
+
+                # Clean up any empty assignments
+                StudentMentorAssignment.objects.filter(
+                    academic_year=current_year,
+                    students__isnull=True
+                ).delete()
+
+                sec_name = students[0].section.name if students[0].section else 'N/A'
+                messages.success(request, f"Mentor assignments updated successfully for {batch} - Section {sec_name}.")
+                return redirect('hod-dashboard')
+
+        elif action == 'assign_mentor_manual':
+            mentor_id = request.POST.get('mentor_id')
             student_ids = request.POST.getlist('student_ids')
+
             if mentor_id and student_ids:
-                assignment, _ = StudentMentorAssignment.objects.update_or_create(
+                mentor_user = User.objects.filter(id=mentor_id).first()
+                if not mentor_user:
+                    messages.error(request, "Selected mentor is invalid.")
+                    return redirect('hod-dashboard')
+
+                assign, _ = StudentMentorAssignment.objects.get_or_create(
                     mentor_id=mentor_id, academic_year=current_year,
                     defaults={'assigned_by': request.user}
                 )
-                assignment.students.set(student_ids)
+
+                students = list(StudentProfile.objects.filter(id__in=student_ids, department=dept, is_deleted=False))
+                
+                other_assignments = StudentMentorAssignment.objects.filter(
+                    academic_year=current_year
+                ).exclude(mentor_id=mentor_id)
+                for oa in other_assignments:
+                    oa.students.remove(*students)
+                    
+                assign.students.add(*students)
+                
+                messages.success(request, f"Manually assigned {len(students)} students to {mentor_user.full_name or mentor_user.email}.")
+                return redirect('hod-dashboard')
+
+        elif action == 'remove_mentor_assignment':
+            assignment_id = request.POST.get('assignment_id')
+            if assignment_id:
+                StudentMentorAssignment.objects.filter(id=assignment_id).delete()
+                messages.success(request, 'Mentor assignment removed.')
 
         elif action == 'upload_lesson_plan':
             subject_id = request.POST.get('subject_id')
             acad_year  = request.POST.get('academic_year', current_year)
+            target_year = request.POST.get('target_year') or None
+            target_section_id = request.POST.get('target_section') or None
+            resource_link = request.POST.get('resource_link', '').strip()
             f = request.FILES.get('file')
             if subject_id and f:
                 LessonPlan.objects.create(
                     subject_id=subject_id, department=dept,
-                    uploaded_by=request.user, file=f, academic_year=acad_year
+                    uploaded_by=request.user, file=f, academic_year=acad_year,
+                    target_year=target_year, target_section_id=target_section_id,
+                    resource_link=resource_link
                 )
 
         elif action == 'upload_timetable':
             semester   = request.POST.get('semester')
+            target_year = request.POST.get('target_year') or None
+            target_section_id = request.POST.get('target_section') or None
             valid_from = request.POST.get('valid_from')
+            resource_link = request.POST.get('resource_link', '').strip()
             f = request.FILES.get('file')
-            if semester and valid_from and f:
+            if valid_from and f:
                 Timetable.objects.create(
                     department=dept, uploaded_by=request.user,
-                    semester=semester, valid_from=valid_from, file=f,
-                    academic_year=current_year
+                    semester=semester or None, target_year=target_year, target_section_id=target_section_id,
+                    valid_from=valid_from, file=f,
+                    academic_year=current_year, resource_link=resource_link
                 )
 
         elif action == 'upload_calendar':
             title    = request.POST.get('title')
             semester = request.POST.get('semester')
+            target_year = request.POST.get('target_year') or None
+            target_section_id = request.POST.get('target_section') or None
+            resource_link = request.POST.get('resource_link', '').strip()
             f = request.FILES.get('file')
-            if title and semester and f:
+            if title and f:
                 AcademicCalendar.objects.create(
                     department=dept, uploaded_by=request.user,
-                    title=title, academic_year=current_year, semester=semester, file=f
+                    title=title, academic_year=current_year, 
+                    semester=semester or None, target_year=target_year, target_section_id=target_section_id, 
+                    file=f,
+                    resource_link=resource_link
                 )
 
         elif action == 'create_training':
@@ -448,6 +716,7 @@ class HODDashboardView(RoleRequiredMixin, View):
             end_date = request.POST.get('end_date') or None
             venue = request.POST.get('venue', '').strip()
             is_active = request.POST.get('is_active') == 'on'
+            registration_link = request.POST.get('registration_link', '').strip()
             if title and start_date:
                 TrainingProgram.objects.create(
                     department=dept,
@@ -458,6 +727,7 @@ class HODDashboardView(RoleRequiredMixin, View):
                     venue=venue,
                     created_by=request.user,
                     is_active=is_active,
+                    registration_link=registration_link
                 )
 
         elif action == 'update_training':
@@ -485,16 +755,16 @@ class HODDashboardView(RoleRequiredMixin, View):
         elif action == 'create_announcement':
             title = request.POST.get('title', '').strip()
             content = request.POST.get('content', '').strip()
-            category = request.POST.get('category', Announcement.Category.NEWS)
-            link = request.POST.get('link', '').strip() or None
-            is_active = request.POST.get('is_active') == 'on'
+            resource_link = request.POST.get('resource_link', '').strip()
             if title and content:
-                Announcement.objects.create(
+                Notification.objects.create(
+                    sender=request.user,
                     title=title,
-                    content=content,
-                    category=category,
-                    link=link,
-                    is_active=is_active,
+                    message=content,
+                    resource_link=resource_link,
+                    target_role=Notification.TargetRole.STUDENT,
+                    target_department=dept,
+                    is_global=False
                 )
 
         return redirect('hod-dashboard')

@@ -21,6 +21,8 @@ class Notification(BaseModel):
     
     is_global = models.BooleanField(default=False)  # If True, target_role and department are ignored (admin to everyone)
     
+    resource_link = models.URLField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

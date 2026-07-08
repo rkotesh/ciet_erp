@@ -38,4 +38,4 @@ class TestServices:
         verify_certification(cert.id, verifier, True)
         
         cert.refresh_from_db()
-        assert cert.verified is True
+        assert cert.is_verified is True
