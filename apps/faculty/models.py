@@ -8,9 +8,12 @@ class LessonPlan(BaseModel):
     uploaded_by  = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True)
     file         = models.FileField(upload_to='lesson_plans/')
     academic_year = models.CharField(max_length=15)
+    target_year  = models.IntegerField(choices=[(1, 'I Year'), (2, 'II Year'), (3, 'III Year'), (4, 'IV Year')], null=True, blank=True)
+    target_section = models.ForeignKey('academics.Section', on_delete=models.CASCADE, null=True, blank=True)
     status       = models.CharField(max_length=20, default='Draft',
                     choices=[('Draft','Draft'),('Published','Published'),('Archived','Archived')])
     notes        = models.TextField(blank=True, default='')
+    resource_link = models.URLField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.subject.name} - {self.academic_year}"
@@ -19,11 +22,14 @@ class LessonPlan(BaseModel):
 class Timetable(BaseModel):
     department   = models.ForeignKey('academics.Department', on_delete=models.CASCADE)
     uploaded_by  = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True)
-    semester     = models.IntegerField()
+    semester     = models.IntegerField(null=True, blank=True)
+    target_year  = models.IntegerField(choices=[(1, 'I Year'), (2, 'II Year'), (3, 'III Year'), (4, 'IV Year')], null=True, blank=True)
+    target_section = models.ForeignKey('academics.Section', on_delete=models.CASCADE, null=True, blank=True)
     file         = models.FileField(upload_to='timetables/')
     valid_from   = models.DateField()
     valid_to     = models.DateField(null=True, blank=True)
     academic_year = models.CharField(max_length=15, blank=True, default='')
+    resource_link = models.URLField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.department.name} - Sem {self.semester}"
@@ -35,8 +41,11 @@ class AcademicCalendar(BaseModel):
     uploaded_by  = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True)
     title        = models.CharField(max_length=200)
     academic_year = models.CharField(max_length=15)
-    semester     = models.IntegerField()
+    semester     = models.IntegerField(null=True, blank=True)
+    target_year  = models.IntegerField(choices=[(1, 'I Year'), (2, 'II Year'), (3, 'III Year'), (4, 'IV Year')], null=True, blank=True)
+    target_section = models.ForeignKey('academics.Section', on_delete=models.CASCADE, null=True, blank=True)
     file         = models.FileField(upload_to='academic_calendars/')
+    resource_link = models.URLField(blank=True, null=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -55,6 +64,7 @@ class TrainingProgram(BaseModel):
     venue        = models.CharField(max_length=200, blank=True, default='')
     created_by   = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True)
     is_active    = models.BooleanField(default=True)
+    registration_link = models.URLField(blank=True, null=True)
 
     class Meta:
         ordering = ['-start_date']

@@ -3,11 +3,423 @@
 
 {% block title %}Faculty Dashboard | Course Management{% endblock %}
 
+<<<<<<< Updated upstream
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h3 class="fw-bold mb-0">Course & Cohort Management</h3>
         <p class="text-muted smaller mb-0">Manage internal courses, student cohorts, and syllabus tracking</p>
+=======
+<body>
+
+    <div id="layout-wrapper">
+        <!-- ── Sidebar ── -->
+        <aside class="sidebar" id="app-sidebar">
+            <div class="sidebar-brand"
+                style="border-bottom:1px solid var(--border); padding:1.25rem 1.5rem; display:flex; align-items:center; justify-content:center;">
+                <img src="{% static 'faculty-hub/images/image.png' %}" alt="CIET Logo"
+                    style="max-width:100%; max-height:56px; object-fit:contain;">
+            </div>
+
+            <div class="sidebar-content">
+                <div class="nav-section-label" style="padding-top:1.25rem;">Main Menu</div>
+                <nav>
+                    <a href="{% url 'faculty-dashboard' %}" class="nav-link active">
+                        <i data-lucide="layout-dashboard"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="{% url 'faculty-cohorts' %}" class="nav-link">
+                        <i data-lucide="users"></i>
+                        <span>Cohorts</span>
+                    </a>
+                    <a href="{% url 'faculty-explore-students' %}" class="nav-link">
+                        <i data-lucide="search"></i>
+                        <span>Explore Students</span>
+                    </a>
+                    <a href="{% url 'faculty-courses' %}" class="nav-link">
+                        <i data-lucide="book-open"></i>
+                        <span>Courses</span>
+                    </a>
+                    <a href="{% url 'faculty-hod-updates' %}" class="nav-link hod-updates" id="nav-updates">
+                        <i data-lucide="bell-ring"></i>
+                        <span class="fw-semibold">HOD Updates</span>
+                        {% if hod_unread_count > 0 %}<span class="pulse-dot"></span>{% endif %}
+                    </a>
+                    <a href="#" class="nav-link" id="nav-chat-btn">
+                        <i data-lucide="message-circle"></i>
+                        <span>Chat</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="nav-link text-danger mt-auto">
+                        <i data-lucide="log-out"></i>
+                        <span>Logout</span>
+                    </a>
+
+                </nav>
+            </div>
+
+        </aside>
+
+        <!-- ── Main Content ── -->
+        <main class="main-content">
+
+            <!-- Top Navbar -->
+            <header class="top-navbar">
+                <div class="d-flex align-items-center gap-3 flex-grow-1">
+                    <button class="nav-action-btn border-0" id="sidebar-toggle" aria-label="Toggle Sidebar">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <div class="search-wrap d-none d-lg-block">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" placeholder="Search sections, students, courses…" id="global-search">
+                    </div>
+                </div>
+
+                <div class="navbar-actions">
+
+                    <!-- Notification Dropdown -->
+                    <div class="dropdown">
+                        <button class="nav-action-btn border-0 position-relative" data-bs-toggle="dropdown"
+                            aria-expanded="false" aria-label="Notifications">
+                            <i data-lucide="bell"></i>
+                            {% if hod_unread_count > 0 %}<span class="notif-badge"></span>{% endif %}
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end p-0 mt-2 overflow-hidden"
+                            style="width:320px; border-radius:var(--radius-lg);">
+                            <div class="notif-header">
+                                <div>
+                                    <p class="fw-bold mb-0 text-white" style="font-size:.9rem;">Notifications</p>
+                                    <small class="text-white opacity-75" style="font-size:.7rem;">HOD Department
+                                        Updates</small>
+                                </div>
+                                <span class="badge bg-white rounded-pill"
+                                    style="color:var(--primary);font-size:.7rem;">{{ hod_unread_count }} New</span>
+                            </div>
+                            <div id="nav-notifications-list" style="max-height:300px;overflow-y:auto;">
+                                <div class="p-4 text-center" id="nav-empty-notifications">
+                                    <i data-lucide="inbox" style="width:28px;height:28px;color:var(--text-muted);"
+                                        class="mb-2"></i>
+                                    <p class="small mb-0" style="color:var(--text-muted);">No new updates right now.</p>
+                                </div>
+                            </div>
+                            <div class="p-2 text-center border-top"
+                                style="border-color:var(--border)!important;background:var(--muted-bg);">
+                                <a href="{% url 'faculty-hod-updates' %}" class="small fw-bold text-decoration-none"
+                                    style="color:var(--primary);">View all notifications</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profile Dropdown -->
+                    <div class="dropdown">
+                        <div class="profile-trigger" data-bs-toggle="dropdown" aria-expanded="false"
+                            style="cursor: pointer;">
+                            <div class="d-none d-sm-block profile-name-block text-end">
+                                <p class="pname mb-0">Dr. Rajesh Kumar</p>
+                                <span class="prole">Professor</span>
+                            </div>
+                            <div class="profile-avatar">
+                                <i data-lucide="user"></i>
+                            </div>
+                        </div>
+                        <ul class="dropdown-menu dropdown-menu-end mt-2 p-2"
+                            style="width:240px; border-radius:var(--radius-lg);">
+                            <li class="profile-user-block mb-2">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="fw-bold" style="font-size:.85rem;color:var(--text-primary);">Dr. Rajesh
+                                        Kumar</span>
+                                    <span class="badge badge-success" style="font-size:.6rem;">SECURE</span>
+                                </div>
+                                <small
+                                    style="color:var(--text-muted);font-size:.7rem;">rajesh.kumar@university.edu</small>
+                            </li>
+
+
+                            <li>
+                                <hr class="dropdown-divider opacity-50 mx-2">
+                            </li>
+                            <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i data-lucide="log-out"
+                                        style="width:14px;"></i> Logout Session</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div class="page-content">
+
+                <!-- Profile Overview -->
+                <div class="card mb-4 fade-in-up profile-overview-card" style="background:#fcfafb; border:1px solid #f3ecef; border-radius:16px;">
+                    <div class="card-body p-4 position-relative">
+                        <button id="edit-profile-btn" class="btn-icon position-absolute" style="top:24px; right:24px; background:white; border:1px solid #eee; color:var(--text-muted); z-index:2; box-shadow:0 2px 4px rgba(0,0,0,0.05);" data-bs-toggle="modal" data-bs-target="#editProfileModal" title="Edit Profile">
+                            <i data-lucide="edit-2" style="width:16px;"></i>
+                        </button>
+
+                        <!-- TOP ROW: Avatar + Title + Stats -->
+                        <div class="d-flex flex-column flex-xl-row gap-4 align-items-xl-center">
+                            <!-- Avatar -->
+                            <div class="position-relative flex-shrink-0" style="width:110px;">
+                                <div id="profile-avatar-wrapper" style="width:110px; height:110px; border-radius:20px; background:#a71a3e; display:flex; align-items:center; justify-content:center; border:1px solid rgba(167,26,62,0.1); overflow:hidden; cursor:pointer;">
+                                    <span id="profile-initials-display" style="color:white; font-size:2.5rem; font-weight:bold;">RK</span>
+                                </div>
+                                <!-- Active Badge -->
+                                <div style="position:absolute; bottom:-12px; left:50%; transform:translateX(-50%); background:white; padding:4px 12px; border-radius:20px; display:flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(0,0,0,0.08); border:1px solid #eee;">
+                                    <span style="width:6px; height:6px; background:#16A34A; border-radius:50%;"></span>
+                                    <span style="font-size:0.65rem; font-weight:800; color:#333;">Active</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Name & Subtitle -->
+                            <div class="ms-xl-2">
+                                <h3 class="fw-bold mb-1" id="profile-display-name" style="color:#1a1a1a; letter-spacing:-0.5px;">Mentor Name</h3>
+                                <p class="mb-1" style="color:#a71a3e; font-weight:600; font-size:0.9rem;" id="profile-display-designation">Associate Professor</p>
+                                <p class="mb-0" style="color:#666; font-size:0.85rem;" id="profile-display-department">Computer Science & Engineering</p>
+                            </div>
+
+
+                        </div>
+
+                        <hr style="border-color:#eadee2; margin:30px 0;">
+
+                        <!-- BOTTOM ROW: Portfolio Info -->
+                        <div>
+                            <h6 style="font-size:0.75rem; font-weight:800; color:#666; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:16px;">Professional Details</h6>
+                            <div class="row g-3">
+                                <!-- Designation -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div style="background:white; border-radius:14px; padding:16px; display:flex; align-items:center; gap:16px; border:1px solid #f0e8eb;">
+                                        <div style="width:36px; height:36px; border-radius:8px; background:#f5f3f7; display:flex; align-items:center; justify-content:center;">
+                                            <i data-lucide="briefcase" style="color:#6b21a8; width:18px;"></i>
+                                        </div>
+                                        <div>
+                                            <p style="font-size:0.65rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:2px;">Designation</p>
+                                            <p class="mb-0 fw-bold" style="color:#1a1a1a; font-size:0.95rem;" id="profile-display-designation-box">Associate Professor</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Department -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div style="background:white; border-radius:14px; padding:16px; display:flex; align-items:center; gap:16px; border:1px solid #f0e8eb;">
+                                        <div style="width:36px; height:36px; border-radius:8px; background:#f0f7fd; display:flex; align-items:center; justify-content:center;">
+                                            <i data-lucide="building-2" style="color:#2563eb; width:18px;"></i>
+                                        </div>
+                                        <div>
+                                            <p style="font-size:0.65rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:2px;">Department</p>
+                                            <p class="mb-0 fw-bold text-truncate" style="color:#1a1a1a; font-size:0.95rem; max-width: 160px;" id="profile-display-department-box">Computer Science</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Email Address -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div style="background:white; border-radius:14px; padding:16px; display:flex; align-items:center; gap:16px; border:1px solid #f0e8eb;">
+                                        <div style="width:36px; height:36px; border-radius:8px; background:#fef4f2; display:flex; align-items:center; justify-content:center;">
+                                            <i data-lucide="mail" style="color:#c2410c; width:18px;"></i>
+                                        </div>
+                                        <div style="max-width:calc(100% - 52px);">
+                                            <p style="font-size:0.65rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:2px;">Email Address</p>
+                                            <p class="mb-0 fw-bold text-truncate" style="color:#1a1a1a; font-size:0.95rem; width:100%; display:block;" id="profile-display-email" title="rajesh@university.edu">rajesh@university.edu</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Experience -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div style="background:white; border-radius:14px; padding:16px; display:flex; align-items:center; gap:16px; border:1px solid #f0e8eb;">
+                                        <div style="width:36px; height:36px; border-radius:8px; background:#fdf5f7; display:flex; align-items:center; justify-content:center;">
+                                            <i data-lucide="clock" style="color:#a71a3e; width:18px;"></i>
+                                        </div>
+                                        <div>
+                                            <p style="font-size:0.65rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:2px;">Experience</p>
+                                            <p class="mb-0 fw-bold" style="color:#1a1a1a; font-size:0.95rem;" id="profile-display-experience">15 Years</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Qualification -->
+                                <div class="col-md-6 col-lg-4">
+                                    <div style="background:white; border-radius:14px; padding:16px; display:flex; align-items:center; gap:16px; border:1px solid #f0e8eb;">
+                                        <div style="width:36px; height:36px; border-radius:8px; background:#f0f7fd; display:flex; align-items:center; justify-content:center;">
+                                            <i data-lucide="award" style="color:#2563eb; width:18px;"></i>
+                                        </div>
+                                        <div style="max-width:calc(100% - 52px);">
+                                            <p style="font-size:0.65rem; font-weight:700; color:#888; text-transform:uppercase; margin-bottom:2px;">Qualification</p>
+                                            <p class="mb-0 fw-bold text-truncate" style="color:#1a1a1a; font-size:0.95rem; width:100%; display:block;" id="profile-display-qualification">Ph.D. in AI</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stat Cards -->
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-sm-6 col-md-3 fade-in-up-1">
+                        <div class="stat-card card-hover" onclick="showDataModal('departments')"
+                            style="cursor:none;">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="stat-icon primary-icon">
+                                    <i data-lucide="building"></i>
+                                </div>
+                                <div>
+                                    <h3 class="fw-bold mb-0" id="count-depts"
+                                        style="font-size:1.8rem;color:var(--text-primary);">0</h3>
+                                    <p class="mb-0 mt-0" style="font-size:.8rem;color:var(--text-muted);">Departments
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-2 border-top d-flex align-items-center justify-content-between"
+                                style="border-color:var(--border)!important;">
+                                <small style="color:var(--text-muted);font-size:.72rem;">All institutional departments</small>
+                                <small style="color:var(--primary);font-weight:600;font-size:.72rem;">View All →</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-3 fade-in-up-2">
+                        <div class="stat-card card-hover" onclick="showDataModal('sections')" style="cursor:none;">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="stat-icon accent-icon">
+                                    <i data-lucide="users"></i>
+                                </div>
+                                <div>
+                                    <h3 class="fw-bold mb-0" id="count-sec"
+                                        style="font-size:1.8rem;color:var(--text-primary);">0</h3>
+                                    <p class="mb-0" style="font-size:.8rem;color:var(--text-muted);">Active Sections</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-2 border-top d-flex align-items-center justify-content-between"
+                                style="border-color:var(--border)!important;">
+                                <small style="color:var(--text-muted);font-size:.72rem;">Click to view all</small>
+                                <small style="color:var(--accent);font-weight:600;font-size:.72rem;">View →</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-3 fade-in-up-3">
+                        <div class="stat-card card-hover" onclick="showDataModal('cohorts')" style="cursor:none;">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="stat-icon green-icon">
+                                    <i data-lucide="graduation-cap"></i>
+                                </div>
+                                <div>
+                                    <h3 class="fw-bold mb-0" id="count-cohort"
+                                        style="font-size:1.8rem;color:var(--text-primary);">0</h3>
+                                    <p class="mb-0" style="font-size:.8rem;color:var(--text-muted);">Active Cohorts</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-2 border-top d-flex align-items-center justify-content-between"
+                                style="border-color:var(--border)!important;">
+                                <small style="color:var(--text-muted);font-size:.72rem;">Click to view all</small>
+                                <small style="color:#16A34A;font-weight:600;font-size:.72rem;">View →</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-3 fade-in-up-3">
+                        <div class="stat-card card-hover" onclick="showDataModal('completed-cohorts')"
+                            style="cursor:none; border-left: 3px solid #16A34A;">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="stat-icon" style="background:rgba(22,163,74,0.12);">
+                                    <i data-lucide="check-circle-2" style="color:#16A34A;"></i>
+                                </div>
+                                <div>
+                                    <h3 class="fw-bold mb-0" id="count-completed-cohorts"
+                                        style="font-size:1.8rem;color:#16A34A;">0</h3>
+                                    <p class="mb-0" style="font-size:.8rem;color:var(--text-muted);">Completed Cohorts
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-2 border-top d-flex align-items-center justify-content-between"
+                                style="border-color:var(--border)!important;">
+                                <small style="color:var(--text-muted);font-size:.72rem;">Click to view all</small>
+                                <small style="color:#16A34A;font-weight:600;font-size:.72rem;">View →</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Analytics -->
+                <div id="dynamic-dashboard-content" class="mb-4">
+                    <div class="active-focus-panel mt-3">
+                        <!-- Panel Header -->
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+                            <div class="d-flex align-items-center gap-3">
+                                <div
+                                    style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,rgba(var(--primary-rgb),0.15),rgba(var(--primary-rgb),0.05));border:1px solid rgba(var(--primary-rgb),0.15);display:flex;align-items:center;justify-content:center;">
+                                    <i data-lucide="layers" style="width:18px;color:var(--primary);"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-0"
+                                        style="color:var(--text-primary);font-size:.95rem;letter-spacing:-.2px;">Cohorts
+                                        &amp; Courses Overview</h6>
+                                    <small style="color:var(--text-muted);font-size:.7rem;">Live status of all your
+                                        academic activities</small>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge" id="active-focus-count"
+                                    style="background:rgba(var(--primary-rgb),0.1);color:var(--primary);border:1px solid rgba(var(--primary-rgb),0.2);font-size:.72rem;padding:.4em 1em;">0
+                                    Active</span>
+                                <span class="badge" id="completed-focus-count"
+                                    style="background:rgba(22,163,74,0.1);color:#16A34A;border:1px solid rgba(22,163,74,0.2);font-size:.72rem;padding:.4em 1em;">0
+                                    Completed</span>
+                            </div>
+                        </div>
+                        <!-- 2x2 Grid -->
+                        <div class="row g-3">
+                            <!-- Active Cohorts -->
+                            <div class="col-12 col-md-6 col-xl-3">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <div style="width:6px;height:20px;border-radius:3px;background:var(--primary);">
+                                    </div>
+                                    <small class="fw-bold"
+                                        style="color:var(--text-secondary);font-size:.7rem;letter-spacing:.5px;text-transform:uppercase;">Active
+                                        Cohorts</small>
+                                    <span class="badge ms-auto" id="cnt-active-cohorts"
+                                        style="background:rgba(var(--primary-rgb),0.1);color:var(--primary);font-size:.62rem;">0</span>
+                                </div>
+                                <div class="active-focus-list" id="active-cohorts-list"></div>
+                            </div>
+                            <!-- Completed Cohorts -->
+                            <div class="col-12 col-md-6 col-xl-3">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <div style="width:6px;height:20px;border-radius:3px;background:#16A34A;"></div>
+                                    <small class="fw-bold"
+                                        style="color:#16A34A;font-size:.7rem;letter-spacing:.5px;text-transform:uppercase;">Completed
+                                        Cohorts</small>
+                                    <span class="badge ms-auto" id="cnt-completed-cohorts"
+                                        style="background:rgba(22,163,74,0.1);color:#16A34A;font-size:.62rem;">0</span>
+                                </div>
+                                <div class="active-focus-list" id="completed-cohorts-list"></div>
+                            </div>
+                            <!-- Active Courses -->
+                            <div class="col-12 col-md-6 col-xl-3">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <div style="width:6px;height:20px;border-radius:3px;background:#0891B2;"></div>
+                                    <small class="fw-bold"
+                                        style="color:#0891B2;font-size:.7rem;letter-spacing:.5px;text-transform:uppercase;">Active
+                                        Courses</small>
+                                    <span class="badge ms-auto" id="cnt-active-courses"
+                                        style="background:rgba(8,145,178,0.1);color:#0891B2;font-size:.62rem;">0</span>
+                                </div>
+                                <div class="active-focus-list" id="active-courses-list"></div>
+                            </div>
+                            <!-- Completed Courses -->
+                            <div class="col-12 col-md-6 col-xl-3">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <div style="width:6px;height:20px;border-radius:3px;background:#7C3AED;"></div>
+                                    <small class="fw-bold"
+                                        style="color:#7C3AED;font-size:.7rem;letter-spacing:.5px;text-transform:uppercase;">Completed
+                                        Courses</small>
+                                    <span class="badge ms-auto" id="cnt-completed-courses"
+                                        style="background:rgba(124,58,237,0.1);color:#7C3AED;font-size:.62rem;">0</span>
+                                </div>
+                                <div class="active-focus-list" id="completed-courses-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+            </div><!-- /page-content -->
+        </main>
+>>>>>>> Stashed changes
     </div>
     <div class="d-flex gap-2">
         <button class="btn btn-li btn-li-outline" data-bs-toggle="modal" data-bs-target="#cohortModal">
