@@ -286,6 +286,52 @@ class StudentPortalView(LoginRequiredMixin, View):
             'education': profile.education.count(),
             'cgpa': profile.cgpa or 0,
         }
+        social_links = [
+            ('LinkedIn', profile.linkedin_url),
+            ('GitHub', profile.github_url),
+            ('LeetCode', profile.leetcode_url),
+            ('HackerRank', profile.hackerrank_url),
+            ('CodeChef', profile.codechef_url),
+            ('Codeforces', profile.codeforces_url),
+        ]
+        filled_social_links = [(label, url) for label, url in social_links if url]
+        profile_checks = [
+            bool(profile.photo),
+            bool(profile.resume),
+            bool(profile.personal_email or profile.user.email),
+            bool(profile.personal_phone or profile.user.phone),
+            bool(filled_social_links),
+            bool(portfolio_stats['education']),
+            bool(portfolio_stats['projects']),
+            bool(portfolio_stats['certifications']),
+        ]
+        profile_completion = round((sum(profile_checks) / len(profile_checks)) * 100)
+        verified_counts = {
+            'certifications': profile.certifications.filter(is_verified=True).count(),
+            'projects': profile.projects.filter(is_verified=True).count(),
+            'courses': profile.courses.filter(is_verified=True).count(),
+            'research': profile.research.filter(is_verified=True).count(),
+            'results': profile.semester_results.filter(is_verified=True).count(),
+        }
+        dashboard_counts = {
+            **portfolio_stats,
+            'courses': profile.courses.count(),
+            'research': profile.research.count(),
+            'events': profile.events.count(),
+            'cohorts': cohorts.count(),
+            'subjects': len(subject_stats),
+            'verified_total': sum(verified_counts.values()),
+            'social_links': len(filled_social_links),
+        }
+        latest_records = {
+            'education': profile.education.order_by('-year_of_passing', '-created_at').first(),
+            'project': profile.projects.order_by('-created_at').first(),
+            'certification': profile.certifications.order_by('-created_at').first(),
+            'internship': profile.internships.order_by('-created_at').first(),
+            'event': profile.events.order_by('-event_date', '-created_at').first(),
+            'course': profile.courses.order_by('-created_at').first(),
+            'research': profile.research.order_by('-created_at').first(),
+        }
 
         return render(request, 'student_portal/dashboard.html', {
             'profile': profile,
@@ -293,6 +339,11 @@ class StudentPortalView(LoginRequiredMixin, View):
             'activity_posts': activity_posts,
             'cohorts': cohorts,
             'portfolio_stats': portfolio_stats,
+            'dashboard_counts': dashboard_counts,
+            'verified_counts': verified_counts,
+            'profile_completion': profile_completion,
+            'filled_social_links': filled_social_links,
+            'latest_records': latest_records,
         })
 
 
@@ -434,6 +485,7 @@ class StudentCertificationsView(LoginRequiredMixin, View):
         cert_type = request.POST.get('cert_type', 'upload')
         cert_url = request.POST.get('cert_url', '').strip()
         title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
         issuer = request.POST.get('issuer', '').strip()
         issued_date = request.POST.get('issued_date', '').strip()
 
@@ -442,6 +494,7 @@ class StudentCertificationsView(LoginRequiredMixin, View):
             title = title or derived.get('title', '')
             issuer = issuer or derived.get('issuer', '')
             issued_date = issued_date or derived.get('issued_date', '')
+            description = description or derived.get('description', '')
 
         if not title:
             title = 'External Certification'
@@ -450,9 +503,25 @@ class StudentCertificationsView(LoginRequiredMixin, View):
         if not issued_date:
             issued_date = str(timezone.now().date())
 
+        cert_id = request.POST.get('cert_id')
+        if action == 'edit' and cert_id:
+            cert = get_object_or_404(Certification, id=cert_id, student=profile)
+            cert.title = title
+            cert.description = description
+            cert.issuer = issuer
+            cert.issued_date = issued_date
+            cert.cert_type = cert_type
+            cert.cert_url = cert_url
+            if 'file' in request.FILES:
+                cert.file = request.FILES['file']
+            cert.save()
+            messages.success(request, 'Certification updated.')
+            return redirect('student-certifications')
+
         cert = Certification(
             student=profile,
             title=title,
+            description=description,
             issuer=issuer,
             issued_date=issued_date,
             cert_type=cert_type,
@@ -489,6 +558,22 @@ class StudentProjectsView(LoginRequiredMixin, View):
             messages.success(request, 'Project removed.')
             return redirect('student-projects')
 
+        project_id = request.POST.get('project_id')
+        if action == 'edit' and project_id:
+            project = get_object_or_404(Project, id=project_id, student=profile)
+            project.title = request.POST.get('title', '')
+            project.description = request.POST.get('description', '')
+            project.tech_stack = request.POST.get('tech_stack', '')
+            project.project_type = request.POST.get('project_type', 'external')
+            project.is_group = request.POST.get('is_group') == 'on'
+            project.team_size = int(request.POST.get('team_size', 1))
+            project.repo_url = request.POST.get('repo_url', '')
+            if 'cover_image' in request.FILES:
+                project.cover_image = request.FILES['cover_image']
+            project.save()
+            messages.success(request, 'Project updated.')
+            return redirect('student-projects')
+
         project = Project.objects.create(
             student=profile,
             title=request.POST.get('title', ''),
@@ -502,6 +587,7 @@ class StudentProjectsView(LoginRequiredMixin, View):
         if 'cover_image' in request.FILES:
             project.cover_image = request.FILES['cover_image']
             project.save(update_fields=['cover_image', 'updated_at'])
+        messages.success(request, 'Project created.')
         return redirect('student-projects')
 
 
@@ -597,6 +683,30 @@ class StudentResearchView(LoginRequiredMixin, View):
 
     def post(self, request):
         profile = get_object_or_404(StudentProfile, user=request.user)
+        action = request.POST.get('action', 'create')
+        
+        if action == 'delete_research':
+            research_id = request.POST.get('research_id')
+            research = get_object_or_404(Research, id=research_id, student=profile)
+            research.delete()
+            messages.success(request, 'Research removed.')
+            return redirect('student-research')
+
+        research_id = request.POST.get('research_id')
+        if action == 'edit_research' and research_id:
+            research = get_object_or_404(Research, id=research_id, student=profile)
+            research.title = request.POST.get('title', '')
+            research.research_type = request.POST.get('research_type', 'external')
+            research.advisor_name = request.POST.get('advisor_name', '')
+            research.advisor_email = request.POST.get('advisor_email', '')
+            research.outcome = request.POST.get('outcome', 'paper')
+            research.publisher = request.POST.get('publisher', '')
+            research.publication_url = request.POST.get('publication_url', '')
+            research.published_date = request.POST.get('published_date') or None
+            research.save()
+            messages.success(request, 'Research updated.')
+            return redirect('student-research')
+
         Research.objects.create(
             student=profile,
             title=request.POST.get('title', ''),
@@ -608,6 +718,7 @@ class StudentResearchView(LoginRequiredMixin, View):
             publication_url=request.POST.get('publication_url', ''),
             published_date=request.POST.get('published_date') or None,
         )
+        messages.success(request, 'Research added successfully.')
         return redirect('student-research')
 
 
@@ -617,14 +728,22 @@ class StudentEducationView(LoginRequiredMixin, View):
             return redirect('dashboard')
         profile = get_object_or_404(StudentProfile, user=request.user)
         education = EducationBackground.objects.filter(student=profile)
+        existing_edu_types = [e.edu_type for e in education]
         return render(request, 'student_portal/education.html', {
             'profile': profile, 'education': education,
             'edu_types': EducationBackground.EduType.choices,
+            'existing_edu_types': existing_edu_types,
         })
 
     def post(self, request):
         profile = get_object_or_404(StudentProfile, user=request.user)
+        action = request.POST.get('action')
         edu_type = request.POST.get('edu_type')
+        
+        if action == 'delete':
+            EducationBackground.objects.filter(student=profile, edu_type=edu_type).delete()
+            return redirect('student-education')
+
         EducationBackground.objects.update_or_create(
             student=profile, edu_type=edu_type,
             defaults={
@@ -635,6 +754,7 @@ class StudentEducationView(LoginRequiredMixin, View):
                 'score_type': request.POST.get('score_type', '%'),
             }
         )
+        messages.success(request, 'Education details updated successfully.')
         return redirect('student-education')
 
 

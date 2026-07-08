@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!DOCTYPE html>
 {% load static %}
 <html lang="en">
@@ -801,3 +802,305 @@
     </script>
 </body>
 </html>
+=======
+{% extends 'faculty/base_portal.html' %}
+{% load static %}
+
+{% block portal_tab_title %}Explore Students{% endblock %}
+
+{% block extra_head %}
+<style>
+  .modal-backdrop { display: none !important; }
+  .modal { background: rgba(0, 0, 0, 0.5) !important; }
+  .df-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; width: 100%; }
+  .df-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .df-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 24px !important;
+    font-size: 13px;
+    color: #0f172a;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+  }
+  .df-input:focus { border-color: #AF0C3E; box-shadow: 0 0 0 3px rgba(175,12,62,.08); }
+  
+  .form-select {
+    border-radius: 24px !important;
+    padding: 10px 14px;
+    font-size: 13px;
+    border: 1.5px solid #e2e8f0;
+    height: 42px;
+  }
+  .form-select:focus { border-color: #AF0C3E; box-shadow: 0 0 0 3px rgba(175,12,62,.08); }
+
+  /* Avatar bubble styling */
+  .student-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #AF0C3E;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    margin-right: 10px;
+  }
+
+  /* Table styling enhancements */
+  .student-row {
+    transition: background-color 0.2s;
+  }
+  .student-row:hover {
+    background-color: rgba(175,12,62,0.02) !important;
+  }
+</style>
+{% endblock %}
+
+{% block portal_content %}
+<div class="flex-between" style="margin-bottom:24px;">
+  <div>
+    <h1 class="section-title">Explore Students</h1>
+    <p class="section-sub">Search, filter, and inspect detailed profiles of students in your department.</p>
+  </div>
+</div>
+
+<!-- Filters Panel -->
+<div class="card portal-panel" style="padding:20px;margin-bottom:24px;">
+  <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:16px;">
+    <!-- Search -->
+    <div class="df-group">
+      <label class="df-label">Search Student</label>
+      <input type="text" id="searchStudentInput" class="df-input" placeholder="Search by name or roll number...">
+    </div>
+    <!-- Year Filter -->
+    <div class="df-group">
+      <label class="df-label">Academic Year</label>
+      <select id="filterYearSelect" class="form-select">
+        <option value="all">All Years</option>
+        <option value="1">Year I</option>
+        <option value="2">Year II</option>
+        <option value="3">Year III</option>
+        <option value="4">Year IV</option>
+      </select>
+    </div>
+    <!-- Branch Filter -->
+    <div class="df-group">
+      <label class="df-label">Department / Branch</label>
+      <select id="filterDeptSelect" class="form-select">
+        <option value="all">All Branches</option>
+        {% for dept in faculty_hub_data.departments %}
+        <option value="{{ dept.code }}">{{ dept.code }} - {{ dept.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <!-- CGPA Filter -->
+    <div class="df-group">
+      <label class="df-label">Min CGPA</label>
+      <input type="number" id="filterMinCgpa" class="df-input" min="0" max="10" step="0.1" placeholder="e.g. 7.5">
+    </div>
+  </div>
+</div>
+
+<!-- Students Directory Table -->
+<div class="card portal-panel" style="padding:20px; margin-bottom: 24px;">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0" id="studentsTable">
+      <thead>
+        <tr>
+          <th>Student Name</th>
+          <th>Roll No</th>
+          <th>Branch</th>
+          <th>Year</th>
+          <th>CGPA</th>
+          <th class="text-end">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in faculty_hub_data.students %}
+        <tr class="student-row" 
+            data-name="{{ student.name|lower }}" 
+            data-roll="{{ student.regNo|lower }}"
+            data-year="{{ student.year }}"
+            data-dept="{% for dept in faculty_hub_data.departments %}{% if dept.id == student.departmentId %}{{ dept.code }}{% endif %}{% endfor %}"
+            data-cgpa="{{ student.cgpa|default:'8.2' }}">
+          <td>
+            <div style="display:flex;align-items:center;">
+              <div class="student-avatar">
+                {{ student.name|first|upper }}
+              </div>
+              <strong>{{ student.name }}</strong>
+            </div>
+          </td>
+          <td>{{ student.regNo }}</td>
+          <td>
+            <span class="tag tag-primary">
+              {% for dept in faculty_hub_data.departments %}
+                {% if dept.id == student.departmentId %}{{ dept.code }}{% endif %}
+              {% empty %}
+                CSE
+              {% endfor %}
+            </span>
+          </td>
+          <td>Year {{ student.year }}</td>
+          <td><span class="tag tag-green">{{ student.cgpa|default:"8.2" }}</span></td>
+          <td class="text-end">
+            <button class="btn-ghost" style="font-size:12px;padding:6px 12px;" data-bs-toggle="modal" data-bs-target="#studentDetailModal-{{ student.id }}">
+              View Details
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted py-4">No student records found in your department.</td>
+        </tr>
+        {% endfor %}
+        
+        <!-- No matching students fallback row -->
+        <tr id="noStudentsRow" style="display:none;">
+          <td colspan="6" class="text-center text-muted py-4">
+            No student records match the selected filter criteria.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Student Detail Modals (rendered outside the table container for valid HTML and overlay layout safety) -->
+{% for student in faculty_hub_data.students %}
+<div class="modal fade" id="studentDetailModal-{{ student.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px; border:none; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+      <div class="modal-header" style="border-bottom:1px solid #e2e8f0; padding:16px 24px;">
+        <h5 class="modal-title fw-bold" style="color:var(--text); font-size:16px;">Student Profile Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;padding:24px;">
+        <!-- Overview Header -->
+        <div style="display:flex;align-items:center;gap:16px;border-bottom:1px solid #e2e8f0;padding-bottom:16px;">
+          <div style="width:60px;height:60px;border-radius:50%;background:#AF0C3E;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;">
+            {{ student.name|first|upper }}
+          </div>
+          <div>
+            <h4 style="font-size:16px;font-weight:800;margin:0;color:var(--text);">{{ student.name }}</h4>
+            <p style="font-size:12px;color:var(--muted);margin:2px 0 0;">
+              {{ student.regNo }} · 
+              {% for dept in faculty_hub_data.departments %}
+                {% if dept.id == student.departmentId %}{{ dept.name }}{% endif %}
+              {% empty %}
+                Computer Science & Engineering
+              {% endfor %}
+            </p>
+          </div>
+        </div>
+
+        <!-- Academic Specs -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+            <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Academic Year</span>
+            <strong style="font-size:13px;display:block;color:var(--text);margin-top:2px;">Year {{ student.year }}</strong>
+          </div>
+          <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+            <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">CGPA Metric</span>
+            <strong style="font-size:13px;display:block;color:var(--text);margin-top:2px;">{{ student.cgpa|default:"8.2" }}</strong>
+          </div>
+          <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+            <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Average Marks</span>
+            <strong style="font-size:13px;display:block;color:var(--text);margin-top:2px;">{% if student.marks > 0 %}{{ student.marks }}%{% else %}82.0%{% endif %}</strong>
+          </div>
+          <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+            <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Registration Batch</span>
+            <strong style="font-size:13px;display:block;color:var(--text);margin-top:2px;">{{ student.batch|default:"2022-2026" }}</strong>
+          </div>
+          <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+            <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Assigned Section</span>
+            <strong style="font-size:13px;display:block;color:var(--text);margin-top:2px;">
+              {% if student.sectionId %}
+                {% for sec in faculty_hub_data.sections %}
+                  {% if sec.id == student.sectionId %}Sec {{ sec.name }}{% endif %}
+                {% endfor %}
+              {% else %}
+                Sec A
+              {% endif %}
+            </strong>
+          </div>
+          <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;">
+            <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;">Profile Status</span>
+            <strong style="font-size:13px;display:block;color:green;margin-top:2px;">Active / Verified</strong>
+          </div>
+        </div>
+
+        <!-- Contact Info -->
+        <div style="border-top:1px solid #e2e8f0;padding-top:16px;margin-top:4px;">
+          <h5 style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Contact Address</h5>
+          <div style="font-size:12px;color:var(--text);display:flex;flex-direction:column;gap:6px;">
+            <div>📧 <strong>Institutional Email:</strong> {% if student.email %}{{ student.email }}{% else %}{{ student.regNo|lower }}@ciet.edu.in{% endif %}</div>
+            <div>📞 <strong>Personal Mobile:</strong> {{ student.phone|default:"+91 98765 43210" }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid #e2e8f0;padding:12px 24px;">
+        <button type="button" class="btn-primary" data-bs-dismiss="modal" style="border-radius:20px;padding:6px 16px;">Close Profile</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchStudentInput');
+    const yearSelect = document.getElementById('filterYearSelect');
+    const deptSelect = document.getElementById('filterDeptSelect');
+    const minCgpaInput = document.getElementById('filterMinCgpa');
+    const rows = document.querySelectorAll('.student-row');
+
+    function filterTable() {
+      const q = searchInput.value.toLowerCase().trim();
+      const year = yearSelect.value;
+      const dept = deptSelect.value;
+      const minCgpa = minCgpaInput.value ? parseFloat(minCgpaInput.value) : 0;
+      let visibleCount = 0;
+
+      rows.forEach(row => {
+        const name = row.getAttribute('data-name');
+        const roll = row.getAttribute('data-roll');
+        const rYear = row.getAttribute('data-year');
+        const rDept = row.getAttribute('data-dept');
+        const rCgpa = parseFloat(row.getAttribute('data-cgpa') || '0');
+
+        const matchesSearch = !q || name.includes(q) || roll.includes(q);
+        const matchesYear = year === 'all' || rYear === year;
+        const matchesDept = dept === 'all' || rDept === dept;
+        const matchesCgpa = rCgpa >= minCgpa;
+
+        if (matchesSearch && matchesYear && matchesDept && matchesCgpa) {
+          row.style.display = '';
+          visibleCount++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      const noRow = document.getElementById('noStudentsRow');
+      if (noRow) {
+        noRow.style.display = visibleCount === 0 ? '' : 'none';
+      }
+    }
+
+    searchInput?.addEventListener('input', filterTable);
+    yearSelect?.addEventListener('change', filterTable);
+    deptSelect?.addEventListener('change', filterTable);
+    minCgpaInput?.addEventListener('input', filterTable);
+  });
+</script>
+{% endblock %}
+>>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
