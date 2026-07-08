@@ -8,15 +8,8 @@ from django.views.generic import TemplateView
 from django.utils.timezone import now
 from django.db.models import Count, Avg, Q, Sum
 from django.http import HttpResponse, JsonResponse
-<<<<<<< Updated upstream
-<<<<<<< HEAD
 from django.contrib import messages
-=======
 from typing import cast
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
-=======
-from django.contrib import messages
->>>>>>> Stashed changes
 
 from apps.accounts.models import User
 from apps.academics.models import Department, Section, Subject, Marks, Attendance
@@ -47,21 +40,12 @@ class RoleRequiredMixin(LoginRequiredMixin):
         return super().dispatch(request, *args, **kwargs)
 
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
 class FacultyHubTemplateView(RoleRequiredMixin, TemplateView):
     allowed_roles = ['Faculty', 'Mentor', 'HOD']
     
     def get(self, request, *args, **kwargs):
         """Mark notifications as read when visiting any faculty portal page."""
-<<<<<<< HEAD
-        user = request.user
-=======
         user = cast(User, request.user)
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
         
         # Get user's departments
         user_departments = list(user.departments.all())
@@ -103,11 +87,7 @@ class FacultyHubTemplateView(RoleRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         """Add unread notifications count to context for all faculty portal pages."""
         context = super().get_context_data(**kwargs)
-<<<<<<< HEAD
-        user = self.request.user
-=======
         user = cast(User, self.request.user)
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
         
         # Get user's departments
         user_departments = list(user.departments.all())
@@ -138,18 +118,7 @@ class FacultyHubTemplateView(RoleRequiredMixin, TemplateView):
         return context
 
 
-<<<<<<< Updated upstream
-<<<<<<< HEAD
 ROMAN_YEARS = {1: 'I', 2: 'II', 3: 'III', 4: 'IV'}
-
-
-=======
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
-=======
-ROMAN_YEARS = {1: 'I', 2: 'II', 3: 'III', 4: 'IV'}
-
-
->>>>>>> Stashed changes
 def _student_year_from_batch(batch):
     try:
         start_year = int(str(batch).split('-')[0])
@@ -158,10 +127,7 @@ def _student_year_from_batch(batch):
         return 1
 
 
-<<<<<<< Updated upstream
-<<<<<<< HEAD
-=======
->>>>>>> Stashed changes
+
 def _batch_display_label(batch):
     """Convert raw batch string to human-readable year label, e.g. 'I Year (2025-2029)'."""
     yr = _student_year_from_batch(batch)
@@ -180,10 +146,7 @@ def _semester_to_year(semester):
 
 
 def _user_departments(user):
-=======
-def _user_departments(user):
     user = cast(User, user)
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
     departments = list(user.departments.all())
     if user.role == 'HOD' and not departments:
         hod_dept = Department.objects.filter(hod=user).first()
@@ -194,10 +157,7 @@ def _user_departments(user):
 
 def build_faculty_hub_data(user):
     """Backend replacement for the old faculty-hub/js/data.js demo arrays."""
-<<<<<<< HEAD
-=======
     user = cast(User, user)
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
     departments_qs = Department.objects.filter(id__in=[d.id for d in _user_departments(user)])
     if not departments_qs.exists() and user.role in ['HOD', 'Mentor', 'Faculty']:
         departments_qs = user.departments.all()
@@ -225,11 +185,7 @@ def build_faculty_hub_data(user):
         {
             'id': str(section.id),
             'name': section.name,
-<<<<<<< HEAD
-            'departmentId': str(section.department_id),
-=======
             'departmentId': str(section.department.id) if section.department else '',
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
             'year': 1,
         }
         for section in sections_qs
@@ -238,11 +194,7 @@ def build_faculty_hub_data(user):
         {
             'id': str(cohort.id),
             'name': cohort.name,
-<<<<<<< HEAD
-            'departmentId': str(cohort.department_id) if cohort.department_id else '',
-=======
             'departmentId': str(cohort.department.id) if cohort.department else '',
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
             'sectionIds': [],
             'year': _student_year_from_batch(cohort.batch),
             'status': 'active' if cohort.is_active else 'closed',
@@ -254,11 +206,7 @@ def build_faculty_hub_data(user):
         {
             'id': str(subject.id),
             'name': subject.name,
-<<<<<<< HEAD
-            'departmentId': str(subject.department_id),
-=======
             'departmentId': str(subject.department.id) if subject.department else '',
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
             'sectionIds': [],
             'cohortIds': [],
             'year': max(min(int((subject.semester + 1) / 2), 4), 1),
@@ -271,11 +219,7 @@ def build_faculty_hub_data(user):
         {
             'id': str(course.id),
             'name': course.name,
-<<<<<<< HEAD
             'category': course.get_category_display(),
-=======
-            'category': course.get_category_display(),  # type: ignore
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
             'sectionIds': [],
             'cohortIds': [str(cohort.id) for cohort in course.cohorts.all()],
             'year': 1,
@@ -286,21 +230,6 @@ def build_faculty_hub_data(user):
     ]
     students = []
     for student in students_qs:
-<<<<<<< HEAD
-        cohort = student.cohorts.first()
-        avg_marks = Marks.objects.filter(student=student).aggregate(avg=Avg('total'))['avg'] or 0
-        students.append({
-            'id': str(student.id),
-            'name': student.user.full_name or student.user.email,
-            'regNo': student.roll_no,
-            'rollNumber': student.roll_no,
-            'sectionId': str(student.section_id) if student.section_id else '',
-            'cohortId': str(cohort.id) if cohort else '',
-            'departmentId': str(student.department_id),
-            'year': _student_year_from_batch(student.batch),
-            'marks': round(float(avg_marks), 1),
-            'courseCompletion': {},
-=======
         cohorts_list = [str(c.id) for c in student.cohorts.all()]  # type: ignore
         
         # Calculate stable metrics based on UUID if DB records are missing
@@ -350,7 +279,6 @@ def build_faculty_hub_data(user):
             'cgpa': cgpa_val,
             'email': student.user.email or '',
             'phone': student.personal_phone or '',
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
         })
 
     dept_filter = Q(target_department__isnull=True)
@@ -362,11 +290,7 @@ def build_faculty_hub_data(user):
             'title': notification.title,
             'content': notification.message,
             'date': notification.created_at.date().isoformat(),
-<<<<<<< HEAD
-            'departmentId': str(notification.target_department_id) if notification.target_department_id else '',
-=======
             'departmentId': str(notification.target_department.id) if notification.target_department else '',
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
             'priority': 'high' if notification.is_global else 'medium',
         }
         for notification in Notification.objects.filter(dept_filter).order_by('-created_at')[:20]
@@ -399,13 +323,8 @@ class FacultyHubCoursesView(FacultyHubTemplateView):
     template_name = 'faculty/courses.html'
 
 
-<<<<<<< HEAD
-class FacultyHubInstitutionCoursesView(FacultyHubTemplateView):
-=======
 class FacultyHubInstitutionCoursesView(RoleRequiredMixin, View):
     allowed_roles = ['Faculty', 'Mentor', 'HOD']
-
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
     def get(self, request, *args, **kwargs):
         return redirect(f"{request.path.replace('institution-courses/', 'courses/')}?type=institutional")
 
@@ -414,9 +333,6 @@ class FacultyHubSettingsView(FacultyHubTemplateView):
     template_name = 'faculty/settings.html'
 
 
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
 class MentorTemplatePageView(FacultyHubTemplateView):
     allowed_roles = ['Mentor']
 
@@ -439,9 +355,6 @@ class MentorTemplatePageView(FacultyHubTemplateView):
                 if s['id'] in assigned_student_ids_str
             ]
         return context
-
-
->>>>>>> 0404b1486801de77c1bd24798baeb12cd1fca27f
 # ══════════════════════════════════════════════════════════════════════════════
 # HOD DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
@@ -451,8 +364,6 @@ class HODDashboardView(RoleRequiredMixin, View):
     def get(self, request):
         user = cast(User, request.user)
         dept = Department.objects.filter(hod=user).first()
-        if not dept:
-            dept = request.user.departments.first()
         if not dept:
             dept = request.user.departments.first()
         if not dept:
@@ -689,8 +600,6 @@ class HODDashboardView(RoleRequiredMixin, View):
         user = cast(User, request.user)
         action = request.POST.get('action')
         dept = Department.objects.filter(hod=user).first()
-        if not dept:
-            dept = request.user.departments.first()
         if not dept:
             dept = request.user.departments.first()
         if not dept:
